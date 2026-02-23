@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "750710002270",
+    "project_id": "foundry-ems",
+    "storage_bucket": "foundry-ems.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:750710002270:android:7a4298059dafa4d2151acf",
+        "android_client_info": {
+          "package_name": "com.foundry.ems.foundry_ems"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBbaheCefwqR2LftyvlRCE_r6rS87qz91Y"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
