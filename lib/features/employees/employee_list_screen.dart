@@ -66,7 +66,7 @@ class _EmployeeContentState extends State<_EmployeeContent> {
 
     return Center(
       child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 1200),
+        constraints: const BoxConstraints(maxWidth: 1600),
         child: Column(
           children: [
             // Search Bar
@@ -107,49 +107,51 @@ class _EmployeeContentState extends State<_EmployeeContent> {
         final employee = employees[index];
         return Padding(
           padding: const EdgeInsets.only(bottom: AppSpacing.m),
-          child: CustomCard(
-            onTap: () => Navigator.push(
-              context,
-              MaterialPageRoute(builder: (_) => AddEditEmployeeScreen(employee: employee)),
-            ),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 24,
-                  backgroundColor: AppColors.primary.withOpacity(0.1),
-                  child: Text(
-                    employee.name.substring(0, 1).toUpperCase(),
-                    style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+          child: RepaintBoundary(
+            child: CustomCard(
+              onTap: () => Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => AddEditEmployeeScreen(employee: employee)),
+              ),
+              child: Row(
+                children: [
+                  CircleAvatar(
+                    radius: 24,
+                    backgroundColor: AppColors.primary.withOpacity(0.1),
+                    child: Text(
+                      employee.name.substring(0, 1).toUpperCase(),
+                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                    ),
                   ),
-                ),
-                const SizedBox(width: AppSpacing.m),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  const SizedBox(width: AppSpacing.m),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          employee.name,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                        ),
+                        Text(
+                          'Aadhar: ${employee.aadharNumber}',
+                          style: Theme.of(context).textTheme.bodySmall,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
                     children: [
+                      _SalaryTypeBadge(type: employee.salaryType),
+                      const SizedBox(height: 4),
                       Text(
-                        employee.name,
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                      ),
-                      Text(
-                        'Aadhar: ${employee.aadharNumber}',
-                        style: Theme.of(context).textTheme.bodySmall,
+                        '₹${employee.hourlyRate.toInt()}/hr',
+                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
                       ),
                     ],
                   ),
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    _SalaryTypeBadge(type: employee.salaryType),
-                    const SizedBox(height: 4),
-                    Text(
-                      '₹${employee.hourlyRate.toInt()}/hr',
-                      style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
-                    ),
-                  ],
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -162,61 +164,65 @@ class _EmployeeContentState extends State<_EmployeeContent> {
       padding: const EdgeInsets.all(AppSpacing.l),
       child: CustomCard(
         padding: EdgeInsets.zero,
-        child: DataTable(
-          headingRowColor: MaterialStateProperty.all(AppColors.backgroundAlt),
-          columns: const [
-            DataColumn(label: Text('Employee')),
-            DataColumn(label: Text('Aadhar Number')),
-            DataColumn(label: Text('DOB')),
-            DataColumn(label: Text('Salary Basis')),
-            DataColumn(label: Text('Actions')),
-          ],
-          rows: employees.map((employee) {
-            return DataRow(cells: [
-              DataCell(
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 16,
-                      backgroundColor: AppColors.primary.withOpacity(0.1),
-                      child: Text(employee.name.substring(0, 1), style: const TextStyle(fontSize: 12)),
-                    ),
-                    const SizedBox(width: 12),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(employee.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                        Text(employee.phone, style: const TextStyle(fontSize: 12, color: AppColors.textMedium)),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              DataCell(Text(employee.aadharNumber)),
-              DataCell(Text(DateFormat('dd/MM/yyyy').format(employee.dateOfBirth))),
-              DataCell(_SalaryTypeBadge(type: employee.salaryType)),
-              DataCell(
-                Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.edit_outlined, size: 18),
-                      onPressed: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(builder: (_) => AddEditEmployeeScreen(employee: employee)),
+        child: SizedBox(
+          width: double.infinity,
+          child: DataTable(
+            columnSpacing: 48,
+            headingRowColor: WidgetStateProperty.all(AppColors.backgroundAlt),
+            columns: const [
+              DataColumn(label: Text('Employee')),
+              DataColumn(label: Text('Aadhar Number')),
+              DataColumn(label: Text('DOB')),
+              DataColumn(label: Text('Salary Basis')),
+              DataColumn(label: Text('Actions')),
+            ],
+            rows: employees.map((employee) {
+              return DataRow(cells: [
+                DataCell(
+                  Row(
+                    children: [
+                      CircleAvatar(
+                        radius: 16,
+                        backgroundColor: AppColors.primary.withOpacity(0.1),
+                        child: Text(employee.name.substring(0, 1), style: const TextStyle(fontSize: 12)),
                       ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
-                      onPressed: () {
-                        // Handle delete
-                      },
-                    ),
-                  ],
+                      const SizedBox(width: 12),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(employee.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                          Text(employee.phone, style: const TextStyle(fontSize: 12, color: AppColors.textMedium)),
+                        ],
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-            ]);
-          }).toList(),
+                DataCell(Text(employee.aadharNumber)),
+                DataCell(Text(DateFormat('dd/MM/yyyy').format(employee.dateOfBirth))),
+                DataCell(_SalaryTypeBadge(type: employee.salaryType)),
+                DataCell(
+                  Row(
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        onPressed: () => Navigator.push(
+                          context,
+                          MaterialPageRoute(builder: (_) => AddEditEmployeeScreen(employee: employee)),
+                        ),
+                      ),
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
+                        onPressed: () {
+                          // Handle delete
+                        },
+                      ),
+                    ],
+                  ),
+                ),
+              ]);
+            }).toList(),
+          ),
         ),
       ),
     );

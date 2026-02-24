@@ -109,7 +109,7 @@ class _DailyAttendanceScreenState extends ConsumerState<DailyAttendanceScreen> {
       onDestinationSelected: (index) {},
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
+          constraints: const BoxConstraints(maxWidth: 1600),
           child: Column(
             children: [
               _buildHeader(),
@@ -200,8 +200,8 @@ class _DailyAttendanceScreenState extends ConsumerState<DailyAttendanceScreen> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 900 ? 3 : (constraints.maxWidth > 600 ? 2 : 1);
-        final childAspectRatio = constraints.maxWidth > 900 ? 2.5 : 3.0;
+        final crossAxisCount = constraints.maxWidth > 1200 ? 4 : (constraints.maxWidth > 900 ? 3 : (constraints.maxWidth > 600 ? 2 : 1));
+        final childAspectRatio = constraints.maxWidth > 1200 ? 2.2 : (constraints.maxWidth > 900 ? 2.5 : 3.0);
 
         return GridView.builder(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -219,55 +219,57 @@ class _DailyAttendanceScreenState extends ConsumerState<DailyAttendanceScreen> {
             final isMarked = attendance != null;
             final isPresent = attendance?.isPresent ?? false;
 
-            return CustomCard(
-              onTap: () => _openAttendanceDialog(employee),
-              child: Stack(
-                children: [
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        backgroundColor: (isMarked ? (isPresent ? Colors.green : Colors.red) : AppColors.primary).withOpacity(0.1),
-                        child: Text(
-                          employee.name[0],
-                          style: TextStyle(color: isMarked ? (isPresent ? Colors.green : Colors.red) : AppColors.primary),
+            return RepaintBoundary(
+              child: CustomCard(
+                onTap: () => _openAttendanceDialog(employee),
+                child: Stack(
+                  children: [
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          backgroundColor: (isMarked ? (isPresent ? Colors.green : Colors.red) : AppColors.primary).withOpacity(0.1),
+                          child: Text(
+                            employee.name[0],
+                            style: TextStyle(color: isMarked ? (isPresent ? Colors.green : Colors.red) : AppColors.primary),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(employee.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                            Text('Aadhar: ${employee.aadharNumber}', style: const TextStyle(fontSize: 10, color: AppColors.textMedium)),
-                            if (isMarked) ...[
-                              const SizedBox(height: 4),
-                              Text(
-                                isPresent ? '${attendance.hoursWorked}h + ${attendance.overtimeHours}h OT' : 'Absent/Leave',
-                                style: TextStyle(
-                                  fontSize: 11, 
-                                  color: isPresent ? Colors.green : Colors.red,
-                                  fontWeight: FontWeight.bold,
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Text(employee.name, style: const TextStyle(fontWeight: FontWeight.bold)),
+                              Text('Aadhar: ${employee.aadharNumber}', style: const TextStyle(fontSize: 10, color: AppColors.textMedium)),
+                              if (isMarked) ...[
+                                const SizedBox(height: 4),
+                                Text(
+                                  isPresent ? '${attendance.hoursWorked}h + ${attendance.overtimeHours}h OT' : 'Absent/Leave',
+                                  style: TextStyle(
+                                    fontSize: 11, 
+                                    color: isPresent ? Colors.green : Colors.red,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
+                              ],
                             ],
-                          ],
+                          ),
+                        ),
+                        const Icon(Icons.edit_note, color: AppColors.textLow),
+                      ],
+                    ),
+                    if (isMarked)
+                      Positioned(
+                        top: 0,
+                        right: 0,
+                        child: Icon(
+                          isPresent ? Icons.check_circle : Icons.cancel,
+                          color: isPresent ? Colors.green : Colors.red,
+                          size: 16,
                         ),
                       ),
-                      const Icon(Icons.edit_note, color: AppColors.textLow),
-                    ],
-                  ),
-                  if (isMarked)
-                    Positioned(
-                      top: 0,
-                      right: 0,
-                      child: Icon(
-                        isPresent ? Icons.check_circle : Icons.cancel,
-                        color: isPresent ? Colors.green : Colors.red,
-                        size: 16,
-                      ),
-                    ),
-                ],
+                  ],
+                ),
               ),
             );
           },

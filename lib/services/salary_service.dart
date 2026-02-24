@@ -46,6 +46,8 @@ class SalaryService {
         employeeId: employee.id,
         employeeName: employee.name,
         weekId: weekId,
+        startDate: startDate,
+        endDate: endDate,
         hours: totalHours,
         overtime: totalOvertime,
         hRate: employee.hourlyRate,

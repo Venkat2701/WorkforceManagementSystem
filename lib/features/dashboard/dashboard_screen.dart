@@ -11,7 +11,6 @@ import '../employees/add_edit_employee_screen.dart';
 import '../attendance/daily_attendance_screen.dart';
 import '../salary/weekly_payroll_screen.dart';
 import '../shifts/shift_management_screen.dart';
-import '../employees/employee_list_screen.dart';
 import '../../services/auth_service.dart';
 
 class DashboardScreen extends ConsumerWidget {
@@ -24,9 +23,7 @@ class DashboardScreen extends ConsumerWidget {
     return ResponsiveShell(
       title: 'Foundry EMS',
       selectedIndex: 0,
-      onDestinationSelected: (index) {
-        // Handle navigation
-      },
+      onDestinationSelected: (index) {},
       body: statsAsync.when(
         data: (stats) => _DashboardContent(stats: stats),
         loading: () => const Center(child: CircularProgressIndicator()),
@@ -38,16 +35,10 @@ class DashboardScreen extends ConsumerWidget {
 
 class _DashboardContent extends ConsumerWidget {
   final DashboardStats stats;
-
   const _DashboardContent({required this.stats});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final user = ref.watch(authStateProvider).value;
-    final displayName = user?.displayName ?? user?.email?.split('@')[0] ?? 'Admin';
-    final now = DateTime.now();
-    final greeting = now.hour < 12 ? 'Good Morning' : (now.hour < 17 ? 'Good Afternoon' : 'Good Evening');
-
     return RefreshIndicator(
       onRefresh: () async {
         ref.invalidate(dashboardStatsProvider);
@@ -56,165 +47,171 @@ class _DashboardContent extends ConsumerWidget {
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         padding: const EdgeInsets.all(AppSpacing.l),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header Section
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      DateFormat('EEEE, MMM dd').format(now),
-                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                            color: AppColors.textMedium,
-                            fontWeight: FontWeight.w500,
-                          ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$greeting, ${displayName.split(' ')[0]}',
-                      style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textHigh,
-                          ),
-                    ),
-                  ],
-                ),
-                _buildLiveBadge(),
-              ],
-            ),
-            const SizedBox(height: AppSpacing.xl),
-
-            // Responsive Stats Grid
-            LayoutBuilder(builder: (context, constraints) {
-              int crossAxisCount = constraints.maxWidth > 1100 ? 4 : (constraints.maxWidth > 700 ? 2 : 1);
-              return GridView.count(
-                shrinkWrap: true,
-                physics: const NeverScrollableScrollPhysics(),
-                crossAxisCount: crossAxisCount,
-                mainAxisSpacing: AppSpacing.m,
-                crossAxisSpacing: AppSpacing.m,
-                childAspectRatio: 1.5,
-                children: [
-                   _StatCard(
-                    title: 'Total Force',
-                    value: '${stats.totalEmployees}',
-                    subtitle: stats.employeesJoinedThisWeek > 0 ? '+${stats.employeesJoinedThisWeek} new this week' : 'Stable workforce',
-                    icon: Icons.groups_rounded,
-                    color: Colors.blue,
-                  ),
-                  _StatCard(
-                    title: 'Attendance',
-                    value: '${(stats.attendanceToday * 100).toInt()}%',
-                    subtitle: '${stats.presentCount}/${stats.totalCount} present',
-                    icon: Icons.fact_check_rounded,
-                    color: Colors.green,
-                    progress: stats.attendanceToday,
-                  ),
-                  _StatCard(
-                    title: 'Proj. Payout',
-                    value: '₹${NumberFormat('#,##,###').format(stats.weeklyPayout)}',
-                    subtitle: 'Current week total',
-                    icon: Icons.account_balance_wallet_rounded,
-                    color: AppColors.primary,
-                  ),
-                  _StatCard(
-                    title: 'Active Shifts',
-                    value: '${stats.activeShifts}',
-                    subtitle: stats.shiftNames.isNotEmpty ? stats.shiftNames.join(', ') : 'No shifts defined',
-                    icon: Icons.pending_actions_rounded,
-                    color: Colors.purple,
-                  ),
-                ],
-              );
-            }),
-
-            const SizedBox(height: AppSpacing.xl),
-
-            // Charts Section
-            LayoutBuilder(builder: (context, constraints) {
-              final isWide = constraints.maxWidth > 900;
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: isWide ? 2 : 1,
-                        child: _buildAttendanceChart(context),
-                      ),
-                      if (isWide) const SizedBox(width: AppSpacing.m),
-                      if (isWide)
-                        Expanded(
-                          flex: 1,
-                          child: _buildPayoutTrend(context),
-                        ),
-                    ],
-                  ),
-                  if (!isWide) ...[
-                    const SizedBox(height: AppSpacing.m),
-                    _buildPayoutTrend(context),
-                  ],
-                ],
-              );
-            }),
-
-            const SizedBox(height: AppSpacing.xl),
-
-            // Quick Actions
-            Text(
-              'Quick Management',
-              style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: AppSpacing.m),
-            _buildQuickActions(context),
-            
-            const SizedBox(height: AppSpacing.xl),
-          ],
+        child: RepaintBoundary(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const _DashboardHeader(),
+              const SizedBox(height: AppSpacing.xl),
+              _StatsGrid(stats: stats),
+              const SizedBox(height: AppSpacing.xl),
+              const _ChartsSection(),
+              const SizedBox(height: AppSpacing.xl),
+              const _QuickActionsHeader(),
+              const SizedBox(height: AppSpacing.m),
+              const _QuickActionsGrid(),
+              const SizedBox(height: AppSpacing.xl),
+            ],
+          ),
         ),
       ),
     );
   }
+}
 
-  Widget _buildLiveBadge() {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: Colors.red.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.red.withOpacity(0.2)),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            width: 8,
-            height: 8,
-            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
-          ),
-          const SizedBox(width: 8),
-          const Text(
-            'LIVE DATA',
-            style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold, fontSize: 10, letterSpacing: 1),
-          ),
-        ],
-      ),
+class _DashboardHeader extends ConsumerWidget {
+  const _DashboardHeader();
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final user = ref.watch(authStateProvider).value;
+    final displayName = user?.displayName ?? user?.email?.split('@')[0] ?? 'Admin';
+    final now = DateTime.now();
+    final greeting = now.hour < 12 ? 'Good Morning' : (now.hour < 17 ? 'Good Afternoon' : 'Good Evening');
+
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              DateFormat('EEEE, MMM dd').format(now),
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: AppColors.textMedium,
+                    fontWeight: FontWeight.w500,
+                  ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '$greeting, ${displayName.split(' ')[0]}',
+              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textHigh,
+                  ),
+            ),
+          ],
+        ),
+        const RepaintBoundary(child: _LiveBadge()),
+      ],
     );
   }
+}
 
-  Widget _buildAttendanceChart(BuildContext context) {
+class _StatsGrid extends StatelessWidget {
+  final DashboardStats stats;
+  const _StatsGrid({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(builder: (context, constraints) {
+      final isWide = constraints.maxWidth > 700;
+      final isUltraWide = constraints.maxWidth > 1100;
+      final crossAxisCount = isUltraWide ? 4 : 2;
+      
+      return GridView.count(
+        shrinkWrap: true,
+        physics: const NeverScrollableScrollPhysics(),
+        crossAxisCount: crossAxisCount,
+        mainAxisSpacing: AppSpacing.m,
+        crossAxisSpacing: AppSpacing.m,
+        childAspectRatio: isUltraWide ? 1.5 : (isWide ? 1.8 : 1.4),
+        children: [
+           _StatCard(
+            title: 'Total Force',
+            value: '${stats.totalEmployees}',
+            subtitle: stats.employeesJoinedThisWeek > 0 ? '+${stats.employeesJoinedThisWeek} new this week' : 'Stable workforce',
+            icon: Icons.groups_rounded,
+            color: Colors.blue,
+          ),
+          _StatCard(
+            title: 'Attendance',
+            value: '${(stats.attendanceToday * 100).toInt()}%',
+            subtitle: '${stats.presentCount}/${stats.totalCount} present',
+            icon: Icons.fact_check_rounded,
+            color: Colors.green,
+            progress: stats.attendanceToday,
+          ),
+          _StatCard(
+            title: 'Proj. Payout',
+            value: '₹${NumberFormat('#,##,###').format(stats.weeklyPayout)}',
+            subtitle: 'Current week total',
+            icon: Icons.account_balance_wallet_rounded,
+            color: AppColors.primary,
+          ),
+          _StatCard(
+            title: 'Active Shifts',
+            value: '${stats.activeShifts}',
+            subtitle: stats.shiftNames.isNotEmpty ? stats.shiftNames.join(', ') : 'No shifts defined',
+            icon: Icons.pending_actions_rounded,
+            color: Colors.purple,
+          ),
+        ],
+      );
+    });
+  }
+}
+
+class _ChartsSection extends ConsumerWidget {
+  const _ChartsSection();
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stats = ref.watch(dashboardStatsProvider).value;
+    if (stats == null) return const SizedBox.shrink();
+
+    return LayoutBuilder(builder: (context, constraints) {
+      final isWide = constraints.maxWidth > 900;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: isWide ? 2 : 1,
+                child: RepaintBoundary(child: _AttendanceChart(stats: stats)),
+              ),
+              if (isWide) const SizedBox(width: AppSpacing.m),
+              if (isWide)
+                Expanded(
+                  flex: 1,
+                  child: RepaintBoundary(child: _PayoutTrendChart(stats: stats)),
+                ),
+            ],
+          ),
+          if (!isWide) ...[
+            const SizedBox(height: AppSpacing.m),
+            RepaintBoundary(child: _PayoutTrendChart(stats: stats)),
+          ],
+        ],
+      );
+    });
+  }
+}
+
+class _AttendanceChart extends StatelessWidget {
+  final DashboardStats stats;
+  const _AttendanceChart({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
     return CustomCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
+          const Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text('Weekly Attendance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+              Text('Weekly Attendance', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
               Text('Last 7 Days', style: TextStyle(color: AppColors.textMedium, fontSize: 12)),
             ],
           ),
@@ -269,8 +266,14 @@ class _DashboardContent extends ConsumerWidget {
       ),
     );
   }
+}
 
-  Widget _buildPayoutTrend(BuildContext context) {
+class _PayoutTrendChart extends StatelessWidget {
+  final DashboardStats stats;
+  const _PayoutTrendChart({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
     return CustomCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -307,8 +310,23 @@ class _DashboardContent extends ConsumerWidget {
       ),
     );
   }
+}
 
-  Widget _buildQuickActions(BuildContext context) {
+class _QuickActionsHeader extends StatelessWidget {
+  const _QuickActionsHeader();
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      'Quick Management',
+      style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
+    );
+  }
+}
+
+class _QuickActionsGrid extends StatelessWidget {
+  const _QuickActionsGrid();
+  @override
+  Widget build(BuildContext context) {
     return LayoutBuilder(builder: (context, constraints) {
       int crossAxisCount = constraints.maxWidth > 1100 ? 4 : (constraints.maxWidth > 650 ? 2 : 1);
       return GridView.count(
@@ -346,6 +364,42 @@ class _DashboardContent extends ConsumerWidget {
         ],
       );
     });
+  }
+}
+
+class _LiveBadge extends StatelessWidget {
+  const _LiveBadge();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: Colors.red.withOpacity(0.1),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.red.withOpacity(0.2)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 8,
+            height: 8,
+            decoration: const BoxDecoration(color: Colors.red, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            'LIVE DATA',
+            style: TextStyle(
+              color: Colors.red, 
+              fontWeight: FontWeight.bold, 
+              fontSize: MediaQuery.of(context).size.width < 600 ? 8 : 10, 
+              letterSpacing: 1,
+            ),
+          ),
+        ],
+      ),
+    );
   }
 }
 

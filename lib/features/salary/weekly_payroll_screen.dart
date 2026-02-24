@@ -53,16 +53,15 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
   @override
   Widget build(BuildContext context) {
     return ResponsiveShell(
-      title: 'Weekly Payroll',
+      title: 'Payroll',
       selectedIndex: 3,
       onDestinationSelected: (index) {},
       body: Center(
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 1200),
+          constraints: const BoxConstraints(maxWidth: 1600),
           child: Column(
             children: [
               _buildHeader(),
-              if (_salaries != null) _buildSummaryCards(),
               Expanded(
                 child: RefreshIndicator(
                   onRefresh: _fetchPayroll,
@@ -70,7 +69,16 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
                       ? const Center(child: CircularProgressIndicator())
                       : _salaries == null || _filteredSalaries.isEmpty
                           ? const Center(child: Text('No employees with payout in this range'))
-                          : _buildPayrollList(),
+                          : SingleChildScrollView(
+                              physics: const AlwaysScrollableScrollPhysics(),
+                              child: Column(
+                                children: [
+                                  if (_salaries != null) _buildSummaryCards(),
+                                  _buildPayrollList(),
+                                  const SizedBox(height: AppSpacing.xl),
+                                ],
+                              ),
+                            ),
                 ),
               ),
             ],
@@ -181,11 +189,12 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
   Widget _buildPayrollList() {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 900 ? 3 : (constraints.maxWidth > 600 ? 2 : 1);
-        final childAspectRatio = constraints.maxWidth > 900 ? 2.5 : (constraints.maxWidth > 600 ? 2.8 : 3.5);
+        final crossAxisCount = constraints.maxWidth > 1200 ? 4 : (constraints.maxWidth > 900 ? 3 : (constraints.maxWidth > 600 ? 2 : 1));
+        final childAspectRatio = constraints.maxWidth > 1200 ? 2.2 : (constraints.maxWidth > 900 ? 2.5 : (constraints.maxWidth > 600 ? 2.8 : 3.5));
 
         return GridView.builder(
-          physics: const AlwaysScrollableScrollPhysics(),
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: crossAxisCount,

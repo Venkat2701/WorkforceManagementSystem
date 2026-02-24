@@ -2,6 +2,8 @@ class WeeklySalary {
   final String employeeId;
   final String employeeName;
   final String weekId;
+  final DateTime startDate;
+  final DateTime endDate;
   final double totalHours;
   final double totalOvertime;
   final double hourlyRate;
@@ -15,6 +17,8 @@ class WeeklySalary {
     required this.employeeId,
     required this.employeeName,
     required this.weekId,
+    required this.startDate,
+    required this.endDate,
     required this.totalHours,
     required this.totalOvertime,
     required this.hourlyRate,
@@ -29,6 +33,8 @@ class WeeklySalary {
     required String employeeId,
     required String employeeName,
     required String weekId,
+    required DateTime startDate,
+    required DateTime endDate,
     required double hours,
     required double overtime,
     required double hRate,
@@ -40,6 +46,8 @@ class WeeklySalary {
       employeeId: employeeId,
       employeeName: employeeName,
       weekId: weekId,
+      startDate: startDate,
+      endDate: endDate,
       totalHours: hours,
       totalOvertime: overtime,
       hourlyRate: hRate,
@@ -55,6 +63,8 @@ class WeeklySalary {
       'employeeId': employeeId,
       'employeeName': employeeName,
       'weekId': weekId,
+      'startDate': startDate.toIso8601String(),
+      'endDate': endDate.toIso8601String(),
       'totalHours': totalHours,
       'totalOvertime': totalOvertime,
       'hourlyRate': hourlyRate,
@@ -64,5 +74,23 @@ class WeeklySalary {
       'totalSalary': totalSalary,
       'paid': paid,
     };
+  }
+
+  factory WeeklySalary.fromMap(Map<String, dynamic> map) {
+    return WeeklySalary(
+      employeeId: map['employeeId'],
+      employeeName: map['employeeName'],
+      weekId: map['weekId'],
+      startDate: DateTime.parse(map['startDate']),
+      endDate: DateTime.parse(map['endDate']),
+      totalHours: (map['totalHours'] as num).toDouble(),
+      totalOvertime: (map['totalOvertime'] as num).toDouble(),
+      hourlyRate: (map['hourlyRate'] as num).toDouble(),
+      overtimeRate: (map['overtimeRate'] as num).toDouble(),
+      baseSalary: (map['baseSalary'] as num).toDouble(),
+      overtimePay: (map['overtimePay'] as num).toDouble(),
+      totalSalary: (map['totalSalary'] as num).toDouble(),
+      paid: map['paid'] ?? false,
+    );
   }
 }

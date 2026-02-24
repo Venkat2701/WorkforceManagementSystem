@@ -29,12 +29,12 @@ class ShiftManagementScreen extends ConsumerWidget {
         },
         child: Center(
           child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 1200),
+            constraints: const BoxConstraints(maxWidth: 1600),
             child: shiftsAsync.when(
               data: (shifts) => LayoutBuilder(
                 builder: (context, constraints) {
-                  final crossAxisCount = constraints.maxWidth > 900 ? 3 : (constraints.maxWidth > 600 ? 2 : 1);
-                  final childAspectRatio = constraints.maxWidth > 900 ? 2.5 : (constraints.maxWidth > 600 ? 2.5 : 3.0);
+                  final crossAxisCount = constraints.maxWidth > 1200 ? 4 : (constraints.maxWidth > 900 ? 3 : (constraints.maxWidth > 600 ? 2 : 1));
+                  final childAspectRatio = constraints.maxWidth > 1200 ? 2.2 : (constraints.maxWidth > 900 ? 2.5 : (constraints.maxWidth > 600 ? 2.5 : 3.0));
   
                   return GridView.builder(
                     physics: const AlwaysScrollableScrollPhysics(), // Important for RefreshIndicator to work

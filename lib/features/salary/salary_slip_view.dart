@@ -13,20 +13,29 @@ class SalarySlipView extends StatelessWidget {
 
   const SalarySlipView({super.key, required this.salary});
 
-  Future<void> _printSlip() async {
+  Future<void> _downloadSlip() async {
     final pdf = await _generatePdf();
-    final fileName = 'SalarySlip_${salary.employeeName.replaceAll(' ', '_')}_${salary.weekId.replaceAll(' ', '_')}';
-    await Printing.layoutPdf(
-      onLayout: (format) => pdf,
-      name: fileName,
+    final dateRange = '${DateFormat('MMM d').format(salary.startDate)} to ${DateFormat('MMM d').format(salary.endDate)}';
+    final fileName = '${salary.employeeName.replaceAll(' ', '_')}_$dateRange';
+    
+    // On Web, this triggers a direct download. On mobile, it opens the share sheet.
+    await Printing.sharePdf(
+      bytes: pdf,
+      filename: '$fileName.pdf',
     );
   }
 
   Future<Uint8List> _generatePdf() async {
     final pdf = pw.Document();
+    
+    // Load a font that supports the Rupee symbol
+    final font = await PdfGoogleFonts.notoSansRegular();
+    final boldFont = await PdfGoogleFonts.notoSansBold();
+
     pdf.addPage(
       pw.Page(
         pageFormat: PdfPageFormat.a4,
+        theme: pw.ThemeData.withFont(base: font, bold: boldFont),
         build: (context) {
           return pw.Column(
             crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -44,7 +53,7 @@ class SalarySlipView extends StatelessWidget {
               pw.SizedBox(height: 20),
               pw.Text('Employee: ${salary.employeeName}', style: pw.TextStyle(fontSize: 16, fontWeight: pw.FontWeight.bold)),
               pw.Text('Employee ID: ${salary.employeeId}'),
-              pw.Text('Period: ${salary.weekId}'),
+              pw.Text('Period: ${DateFormat('MMM d').format(salary.startDate)} to ${DateFormat('MMM d, yyyy').format(salary.endDate)}'),
               pw.SizedBox(height: 30),
               pw.Divider(),
               _pwRow('Description', 'Amount', isHeader: true),
@@ -89,8 +98,8 @@ class SalarySlipView extends StatelessWidget {
         backgroundColor: Colors.white,
         actions: [
           IconButton(
-            icon: const Icon(Icons.print),
-            onPressed: _printSlip,
+            icon: const Icon(Icons.download),
+            onPressed: _downloadSlip,
           ),
         ],
       ),
@@ -123,7 +132,7 @@ class SalarySlipView extends StatelessWidget {
               const SizedBox(height: AppSpacing.xl),
               _buildInfoRow('Employee Name', salary.employeeName),
               _buildInfoRow('Employee ID', salary.employeeId.substring(0, 8).toUpperCase()),
-              _buildInfoRow('Week ID', salary.weekId),
+              _buildInfoRow('Period', '${DateFormat('MMM d').format(salary.startDate)} to ${DateFormat('MMM d, yyyy').format(salary.endDate)}'),
               const Divider(height: 40),
               const Text('BREAKDOWN', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
               const SizedBox(height: AppSpacing.m),
@@ -144,7 +153,7 @@ class SalarySlipView extends StatelessWidget {
               SizedBox(
                 width: double.infinity,
                 child: OutlinedButton.icon(
-                  onPressed: _printSlip,
+                  onPressed: _downloadSlip,
                   icon: const Icon(Icons.download),
                   label: const Text('Download PDF'),
                   style: OutlinedButton.styleFrom(

@@ -200,13 +200,14 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(AppSpacing.s),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary,
-                      borderRadius: BorderRadius.circular(AppRadius.medium),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(AppRadius.medium),
+                    child: Image.asset(
+                      'assets/images/logo.jpg',
+                      width: 64,
+                      height: 64,
+                      fit: BoxFit.contain,
                     ),
-                    child: const Icon(Icons.precision_manufacturing, color: Colors.white, size: 32),
                   ),
                   const SizedBox(height: AppSpacing.s),
                   Text(
@@ -313,13 +314,14 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
         padding: const EdgeInsets.symmetric(vertical: AppSpacing.xl),
         child: Column(
           children: [
-            Container(
-              padding: const EdgeInsets.all(AppSpacing.s),
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(AppRadius.small),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(AppRadius.small),
+              child: Image.asset(
+                'assets/images/logo.jpg',
+                width: 48,
+                height: 48,
+                fit: BoxFit.contain,
               ),
-              child: const Icon(Icons.precision_manufacturing, color: Colors.white, size: 24),
             ),
             if (isDesktop) ...[
               const SizedBox(height: AppSpacing.s),
