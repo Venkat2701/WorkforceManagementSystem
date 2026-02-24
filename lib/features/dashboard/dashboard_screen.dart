@@ -79,29 +79,32 @@ class _DashboardHeader extends ConsumerWidget {
     final greeting = now.hour < 12 ? 'Good Morning' : (now.hour < 17 ? 'Good Afternoon' : 'Good Evening');
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      crossAxisAlignment: CrossAxisAlignment.center,
       children: [
-        Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              DateFormat('EEEE, MMM dd').format(now),
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: AppColors.textMedium,
-                    fontWeight: FontWeight.w500,
-                  ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              '$greeting, ${displayName.split(' ')[0]}',
-              style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textHigh,
-                  ),
-            ),
-          ],
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                DateFormat('EEEE, MMM dd').format(now),
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: AppColors.textMedium,
+                      fontWeight: FontWeight.w500,
+                    ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                '$greeting, ${displayName.split(' ')[0]}',
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textHigh,
+                      fontSize: MediaQuery.of(context).size.width < 600 ? 24 : 32,
+                    ),
+              ),
+            ],
+          ),
         ),
-        const RepaintBoundary(child: _LiveBadge()),
+        const _LiveBadge(),
       ],
     );
   }
@@ -124,7 +127,7 @@ class _StatsGrid extends StatelessWidget {
         crossAxisCount: crossAxisCount,
         mainAxisSpacing: AppSpacing.m,
         crossAxisSpacing: AppSpacing.m,
-        childAspectRatio: isUltraWide ? 1.5 : (isWide ? 1.8 : 1.4),
+        childAspectRatio: isUltraWide ? 1.5 : (isWide ? 1.8 : 1.1),
         children: [
            _StatCard(
             title: 'Total Force',
@@ -372,8 +375,12 @@ class _LiveBadge extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 8 : 12, 
+        vertical: isMobile ? 4 : 6,
+      ),
       decoration: BoxDecoration(
         color: Colors.red.withOpacity(0.1),
         borderRadius: BorderRadius.circular(20),
