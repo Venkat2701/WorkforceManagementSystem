@@ -46,6 +46,7 @@ class Attendance {
   final double hoursWorked;
   final double overtimeHours;
   final bool isPresent;
+  final bool isPaid;
   final List<TimeSegment> segments;
 
   Attendance({
@@ -56,6 +57,7 @@ class Attendance {
     required this.hoursWorked,
     required this.overtimeHours,
     required this.isPresent,
+    this.isPaid = false,
     this.segments = const [],
   });
 
@@ -69,6 +71,7 @@ class Attendance {
       hoursWorked: (map['hoursWorked'] ?? 0).toDouble(),
       overtimeHours: (map['overtimeHours'] ?? 0).toDouble(),
       isPresent: map['isPresent'] ?? false,
+      isPaid: map['isPaid'] ?? false,
       segments: segmentList,
     );
   }
@@ -81,6 +84,7 @@ class Attendance {
       'hoursWorked': hoursWorked,
       'overtimeHours': overtimeHours,
       'isPresent': isPresent,
+      'isPaid': isPaid,
       'segments': segments.map((s) => s.toMap()).toList(),
     };
   }
@@ -93,6 +97,7 @@ class Attendance {
     double? hoursWorked,
     double? overtimeHours,
     bool? isPresent,
+    bool? isPaid,
     List<TimeSegment>? segments,
   }) {
     return Attendance(
@@ -103,6 +108,7 @@ class Attendance {
       hoursWorked: hoursWorked ?? this.hoursWorked,
       overtimeHours: overtimeHours ?? this.overtimeHours,
       isPresent: isPresent ?? this.isPresent,
+      isPaid: isPaid ?? this.isPaid,
       segments: segments ?? this.segments,
     );
   }

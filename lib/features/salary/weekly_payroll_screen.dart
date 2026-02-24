@@ -20,11 +20,21 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
     start: DateTime.now().subtract(const Duration(days: 7)),
     end: DateTime.now(),
   );
-  List<WeeklySalary>? _salaries;
+  Map<String, List<WeeklySalary>>? _salaryData;
+  String _statusFilter = 'All'; // 'All', 'Paid', 'UnPaid'
   bool _isLoading = false;
 
   List<WeeklySalary> get _filteredSalaries {
-    return (_salaries ?? []).where((s) => s.totalSalary > 0).toList();
+    if (_salaryData == null) return [];
+    
+    switch (_statusFilter) {
+      case 'Paid':
+        return _salaryData!['paid'] ?? [];
+      case 'UnPaid':
+        return _salaryData!['unpaid'] ?? [];
+      default:
+        return _salaryData!['all'] ?? [];
+    }
   }
 
   @override
@@ -40,7 +50,7 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
             _dateRange.start,
             _dateRange.end,
           );
-      setState(() => _salaries = results);
+      setState(() => _salaryData = results);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
@@ -67,13 +77,13 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
                   onRefresh: _fetchPayroll,
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
-                      : _salaries == null || _filteredSalaries.isEmpty
+                      : _salaryData == null || _filteredSalaries.isEmpty
                           ? const Center(child: Text('No employees with payout in this range'))
                           : SingleChildScrollView(
                               physics: const AlwaysScrollableScrollPhysics(),
                               child: Column(
                                 children: [
-                                  if (_salaries != null) _buildSummaryCards(),
+                                  if (_salaryData != null) _buildSummaryCards(),
                                   _buildPayrollList(),
                                   const SizedBox(height: AppSpacing.xl),
                                 ],
@@ -137,6 +147,8 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
                         ),
                       ),
                     ),
+                    const SizedBox(height: AppSpacing.m),
+                    _buildFilterRow(),
                   ],
                 ),
               ),
@@ -151,6 +163,45 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
             ],
           );
         },
+      ),
+    );
+  }
+
+  Widget _buildFilterRow() {
+    return Row(
+      children: [
+        _buildFilterChip('All', Colors.grey[600]!, Colors.grey[100]!),
+        const SizedBox(width: AppSpacing.s),
+        _buildFilterChip('UnPaid', const Color(0xFFEF5350), const Color(0xFFFFEBEE)),
+        const SizedBox(width: AppSpacing.s),
+        _buildFilterChip('Paid', const Color(0xFF66BB6A), const Color(0xFFE8F5E9)),
+      ],
+    );
+  }
+
+  Widget _buildFilterChip(String label, Color activeColor, Color activeBg) {
+    final isSelected = _statusFilter == label;
+    return GestureDetector(
+      onTap: () => setState(() => _statusFilter = label),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? activeBg : Colors.transparent,
+          borderRadius: BorderRadius.circular(AppRadius.circular),
+          border: Border.all(
+            color: isSelected ? activeColor : Colors.black.withOpacity(0.05),
+            width: 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? activeColor : AppColors.textMedium,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+            fontSize: 13,
+          ),
+        ),
       ),
     );
   }
@@ -206,19 +257,38 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
           itemBuilder: (context, index) {
             final salary = _filteredSalaries[index];
             return CustomCard(
-              onTap: () => Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => SalarySlipView(salary: salary)),
-              ),
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (_) => SalarySlipView(
+                    salary: salary,
+                    isReadOnly: _statusFilter == 'All',
+                  )),
+                );
+                if (result == true) {
+                  _fetchPayroll();
+                }
+              },
               child: Row(
                 children: [
+                  Container(
+                    width: 4,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: _statusFilter == 'All' 
+                          ? Colors.grey.withOpacity(0.2) 
+                          : (salary.paid ? const Color(0xFF66BB6A) : const Color(0xFFEF5350)),
+                      borderRadius: BorderRadius.circular(2),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(salary.employeeName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        Text('${salary.totalHours}h Reg | ${salary.totalOvertime}h Ovt', style: Theme.of(context).textTheme.bodySmall),
+                        Text('${salary.totalHours.toStringAsFixed(1)}h Reg | ${salary.totalOvertime.toStringAsFixed(1)}h Ovt', style: Theme.of(context).textTheme.bodySmall),
                       ],
                     ),
                   ),
@@ -227,12 +297,29 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text(
-                        '₹${salary.totalSalary.toStringAsFixed(2)}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary, fontSize: 18),
+                        '₹${salary.totalSalary.toStringAsFixed(0)}',
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold, 
+                          color: _statusFilter == 'All' 
+                              ? const Color(0xFFF57C00) 
+                              : (salary.paid ? const Color(0xFF43A047) : const Color(0xFFE53935)), 
+                          fontSize: 18
+                        ),
                       ),
-                      const Icon(Icons.chevron_right, size: 20, color: AppColors.textLow),
+                      Text(
+                        _statusFilter == 'All' ? 'TOTAL' : (salary.paid ? 'PAID' : 'DUE'),
+                        style: TextStyle(
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                          color: _statusFilter == 'All' 
+                              ? const Color(0xFFF57C00).withOpacity(0.8) 
+                              : (salary.paid ? const Color(0xFF66BB6A) : const Color(0xFFEF5350)),
+                        ),
+                      ),
                     ],
                   ),
+                  const SizedBox(width: 8),
+                  const Icon(Icons.chevron_right, size: 20, color: AppColors.textLow),
                 ],
               ),
             );

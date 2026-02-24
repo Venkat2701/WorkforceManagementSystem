@@ -8,6 +8,14 @@ final authStateProvider = StreamProvider<User?>((ref) {
   return ref.watch(authServiceProvider).authStateChanges;
 });
 
+final userRoleProvider = FutureProvider<String?>((ref) async {
+  final user = ref.watch(authStateProvider).value;
+  if (user == null) return null;
+  
+  final doc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+  return doc.data()?['role'] as String?;
+});
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -21,13 +29,14 @@ class AuthService {
         password: password,
       );
       
-      // Check for superadmin role
+      // Check for allowed roles
       final userDoc = await _firestore.collection('users').doc(credential.user?.uid).get();
-      if (userDoc.exists && userDoc.data()?['role'] == 'superadmin') {
+      final role = userDoc.data()?['role'];
+      if (userDoc.exists && (role == 'superadmin' || role == 'admin')) {
         return credential;
       } else {
         await _auth.signOut();
-        throw Exception('Access denied. Superadmin role required.');
+        throw Exception('Access denied. Admin role required.');
       }
     } catch (e) {
       rethrow;
