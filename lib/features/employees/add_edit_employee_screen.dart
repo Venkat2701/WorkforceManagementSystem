@@ -134,6 +134,41 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
         return;
       }
 
+      final service = ref.read(employeeServiceProvider);
+      final name = _nameController.text.trim();
+      final aadhar = _aadharController.text.trim();
+
+      // Duplicate validations
+      final nameDuplicate = await service.isNameDuplicate(
+        name,
+        excludeId: widget.employee?.id,
+      );
+      if (nameDuplicate) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('An employee with this name already exists'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
+
+      final aadharDuplicate = await service.isAadharDuplicate(
+        aadhar,
+        excludeId: widget.employee?.id,
+      );
+      if (aadharDuplicate) {
+        setState(() => _isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('An employee with this Aadhar number already exists'),
+            backgroundColor: AppColors.error,
+          ),
+        );
+        return;
+      }
+
       final newHourlyRate =
           double.tryParse(_hourlyRateController.text) ?? 100.0;
       final newOvertimeRate =

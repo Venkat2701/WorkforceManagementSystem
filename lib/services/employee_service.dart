@@ -45,4 +45,22 @@ class EmployeeService {
   Future<void> deleteEmployee(String id) async {
     await _firestore.collection('employees').doc(id).delete();
   }
+
+  Future<bool> isNameDuplicate(String name, {String? excludeId}) async {
+    final query = _firestore
+        .collection('employees')
+        .where('name', isEqualTo: name);
+    final snapshot = await query.get();
+    if (excludeId == null) return snapshot.docs.isNotEmpty;
+    return snapshot.docs.any((doc) => doc.id != excludeId);
+  }
+
+  Future<bool> isAadharDuplicate(String aadhar, {String? excludeId}) async {
+    final query = _firestore
+        .collection('employees')
+        .where('aadharNumber', isEqualTo: aadhar);
+    final snapshot = await query.get();
+    if (excludeId == null) return snapshot.docs.isNotEmpty;
+    return snapshot.docs.any((doc) => doc.id != excludeId);
+  }
 }

@@ -98,17 +98,22 @@ class _DailyAttendanceScreenState extends ConsumerState<DailyAttendanceScreen> {
           segments: [],
         );
 
-    final result = await showDialog<Attendance>(
+    final result = await showDialog<dynamic>(
       context: context,
       builder: (context) => AttendanceDialog(
         employee: employee,
         initialAttendance: existingAttendance,
         shifts: shifts,
         date: _selectedDate,
+        isAlreadyMarked: _attendanceMap.containsKey(employee.id),
       ),
     );
 
-    if (result != null) {
+    if (result == 'unmark') {
+      setState(() {
+        _attendanceMap.remove(employee.id);
+      });
+    } else if (result is Attendance) {
       setState(() {
         _attendanceMap[employee.id] = result;
       });
