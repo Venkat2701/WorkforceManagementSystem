@@ -8,6 +8,7 @@ import '../../core/responsive/responsive_layout.dart';
 import '../../services/employee_service.dart';
 import '../../models/employee.dart';
 import 'add_edit_employee_screen.dart';
+import 'employee_dashboard_screen.dart';
 
 class EmployeeListScreen extends ConsumerWidget {
   const EmployeeListScreen({super.key});
@@ -228,10 +229,7 @@ class _EmployeeContentState extends ConsumerState<_EmployeeContent> {
               onTap: () => Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => AddEditEmployeeScreen(
-                    employee: employee,
-                    isReadOnly: true,
-                  ),
+                  builder: (_) => EmployeeDashboardScreen(employee: employee),
                 ),
               ),
               child: Row(
@@ -351,10 +349,7 @@ class _EmployeeContentState extends ConsumerState<_EmployeeContent> {
                 onSelectChanged: (_) => Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => AddEditEmployeeScreen(
-                      employee: employee,
-                      isReadOnly: true,
-                    ),
+                    builder: (_) => EmployeeDashboardScreen(employee: employee),
                   ),
                 ),
                 cells: [

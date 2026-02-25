@@ -65,7 +65,7 @@ class _DailyAttendanceScreenState extends ConsumerState<DailyAttendanceScreen> {
     try {
       await ref
           .read(attendanceServiceProvider)
-          .saveBulkAttendance(_attendanceMap.values.toList());
+          .saveBulkAttendance(_selectedDate, _attendanceMap.values.toList());
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Attendance saved successfully')),
