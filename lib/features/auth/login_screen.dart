@@ -105,99 +105,94 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                         border: Border.all(color: Colors.black.withOpacity(0.05)),
                         boxShadow: AppShadows.card,
                       ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Welcome Back',
-                            style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          const SizedBox(height: AppSpacing.s),
-                          Text(
-                            'Enter your credentials to access the portal.',
-                            style: Theme.of(context).textTheme.bodyMedium,
-                          ),
-                          const SizedBox(height: AppSpacing.xl),
-                          // Email Field
-                          Text(
-                            'Email Address',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                  color: AppColors.textHigh,
-                                ),
-                          ),
-                          const SizedBox(height: AppSpacing.s),
-                          TextField(
-                            controller: _emailController,
-                            decoration: const InputDecoration(
-                              hintText: 'name@foundry.com',
-                              prefixIcon: Icon(Icons.mail_outline, color: AppColors.textMedium),
+                      child: AutofillGroup(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              'Welcome Back',
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                    fontWeight: FontWeight.bold,
+                                  ),
                             ),
-                            keyboardType: TextInputType.emailAddress,
-                          ),
-                          const SizedBox(height: AppSpacing.l),
-                          // Password Field
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(
-                                'Password',
-                                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                      fontWeight: FontWeight.w600,
-                                      color: AppColors.textHigh,
-                                    ),
+                            const SizedBox(height: AppSpacing.s),
+                            Text(
+                              'Enter your credentials to access the portal.',
+                              style: Theme.of(context).textTheme.bodyMedium,
+                            ),
+                            const SizedBox(height: AppSpacing.xl),
+                            // Email Field
+                            Text(
+                              'Email Address',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textHigh,
+                                  ),
+                            ),
+                            const SizedBox(height: AppSpacing.s),
+                            TextField(
+                              controller: _emailController,
+                              textInputAction: TextInputAction.next,
+                              autofillHints: const [AutofillHints.email],
+                              decoration: const InputDecoration(
+                                hintText: 'name@foundry.com',
+                                prefixIcon: Icon(Icons.mail_outline, color: AppColors.textMedium),
                               ),
-                              TextButton(
-                                onPressed: () {},
-                                child: Text(
-                                  'Forgot password?',
-                                  style: Theme.of(context).textTheme.labelLarge,
+                              keyboardType: TextInputType.emailAddress,
+                            ),
+                            const SizedBox(height: AppSpacing.l),
+                            // Password Field
+                            Text(
+                              'Password',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                    fontWeight: FontWeight.w600,
+                                    color: AppColors.textHigh,
+                                  ),
+                            ),
+                            TextField(
+                              controller: _passwordController,
+                              obscureText: _obscurePassword,
+                              textInputAction: TextInputAction.done,
+                              autofillHints: const [AutofillHints.password],
+                              onSubmitted: (_) => _handleLogin(),
+                              decoration: InputDecoration(
+                                hintText: '••••••••',
+                                prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMedium),
+                                suffixIcon: IconButton(
+                                  icon: Icon(
+                                    _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
+                                    color: AppColors.textMedium,
+                                  ),
+                                  onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                                 ),
-                              ),
-                            ],
-                          ),
-                          TextField(
-                            controller: _passwordController,
-                            obscureText: _obscurePassword,
-                            decoration: InputDecoration(
-                              hintText: '••••••••',
-                              prefixIcon: const Icon(Icons.lock_outline, color: AppColors.textMedium),
-                              suffixIcon: IconButton(
-                                icon: Icon(
-                                  _obscurePassword ? Icons.visibility_off_outlined : Icons.visibility_outlined,
-                                  color: AppColors.textMedium,
-                                ),
-                                onPressed: () => setState(() => _obscurePassword = !_obscurePassword),
                               ),
                             ),
-                          ),
-                          const SizedBox(height: AppSpacing.xl),
-                          // Sign In Button
-                          SizedBox(
-                            width: double.infinity,
-                            child: ElevatedButton(
-                              onPressed: _isLoading ? null : _handleLogin,
-                              child: _isLoading
-                                  ? const LoadingIndicator(color: Colors.white)
-                                  : const Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text('Sign In'),
-                                        SizedBox(width: AppSpacing.s),
-                                        Icon(Icons.arrow_forward, size: 20),
-                                      ],
-                                    ),
+                            const SizedBox(height: AppSpacing.xl),
+                            // Sign In Button
+                            SizedBox(
+                              width: double.infinity,
+                              child: ElevatedButton(
+                                onPressed: _isLoading ? null : _handleLogin,
+                                child: _isLoading
+                                    ? const LoadingIndicator(color: Colors.white)
+                                    : const Row(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Text('Sign In'),
+                                          SizedBox(width: AppSpacing.s),
+                                          Icon(Icons.arrow_forward, size: 20),
+                                        ],
+                                      ),
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     ),
                     const SizedBox(height: AppSpacing.xxl),
                     // Footer Section
                     Text(
-                      'Employee Access Only',
+                      'Admin Access Only',
                       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                             color: AppColors.textLow,
                           ),
