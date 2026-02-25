@@ -44,24 +44,110 @@ class EmployeeListScreen extends ConsumerWidget {
   }
 }
 
-class _EmployeeContent extends StatefulWidget {
+class _EmployeeContent extends ConsumerStatefulWidget {
   final List<Employee> employees;
 
   const _EmployeeContent({required this.employees});
 
   @override
-  State<_EmployeeContent> createState() => _EmployeeContentState();
+  ConsumerState<_EmployeeContent> createState() => _EmployeeContentState();
 }
 
-class _EmployeeContentState extends State<_EmployeeContent> {
+class _EmployeeContentState extends ConsumerState<_EmployeeContent> {
   final _searchController = TextEditingController();
   String _searchQuery = '';
 
+  bool _showArchived = false;
+
+  Future<void> _archiveEmployee(Employee employee) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Archive Employee'),
+        content: Text(
+          'Are you sure you want to archive ${employee.name}? They will not appear in the daily attendance list.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(foregroundColor: Colors.orange),
+            child: const Text('Archive'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await ref.read(employeeServiceProvider).archiveEmployee(employee.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Employee archived successfully')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
+      }
+    }
+  }
+
+  Future<void> _unarchiveEmployee(Employee employee) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Unarchive Employee'),
+        content: Text(
+          'Do you want to restore ${employee.name} to the active list?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      try {
+        await ref.read(employeeServiceProvider).unarchiveEmployee(employee.id);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Employee restored successfully')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(
+            context,
+          ).showSnackBar(SnackBar(content: Text('Error: $e')));
+        }
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final filteredEmployees = widget.employees.where((e) {
-      return e.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+    final List<Employee> filteredList = widget.employees.where((e) {
+      final matchesSearch =
+          e.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
           e.aadharNumber.contains(_searchQuery);
+      final matchesStatus = _showArchived
+          ? e.status == 'Archived'
+          : e.status != 'Archived';
+      return matchesSearch && matchesStatus;
     }).toList();
 
     return Center(
@@ -69,27 +155,53 @@ class _EmployeeContentState extends State<_EmployeeContent> {
         constraints: const BoxConstraints(maxWidth: 1600),
         child: Column(
           children: [
-            // Search Bar
+            // Tabs and Search Bar
             Padding(
               padding: const EdgeInsets.all(AppSpacing.l),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (val) => setState(() => _searchQuery = val),
-                decoration: InputDecoration(
-                  hintText: 'Search by name or Aadhar...',
-                  prefixIcon: const Icon(Icons.search, color: AppColors.textMedium),
-                  fillColor: Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(AppRadius.medium),
-                    borderSide: BorderSide(color: Colors.black.withOpacity(0.05)),
+              child: Row(
+                children: [
+                  SegmentedButton<bool>(
+                    segments: const [
+                      ButtonSegment(
+                        value: false,
+                        label: Text('Active'),
+                        icon: Icon(Icons.people_outline),
+                      ),
+                      ButtonSegment(
+                        value: true,
+                        label: Text('Archived'),
+                        icon: Icon(Icons.archive_outlined),
+                      ),
+                    ],
+                    selected: <bool>{_showArchived},
+                    onSelectionChanged: (Set<bool> val) {
+                      setState(() {
+                        _showArchived = val.first;
+                      });
+                    },
                   ),
-                ),
+                  const SizedBox(width: AppSpacing.m),
+                  Expanded(
+                    child: TextField(
+                      controller: _searchController,
+                      onChanged: (val) => setState(() => _searchQuery = val),
+                      decoration: InputDecoration(
+                        hintText: 'Search by name or Aadhar...',
+                        prefixIcon: const Icon(Icons.search, size: 20),
+                        fillColor: Colors.white,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(AppRadius.medium),
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
             Expanded(
               child: ResponsiveLayout(
-                mobile: _buildCardList(filteredEmployees),
-                desktop: _buildDataTable(filteredEmployees),
+                mobile: _buildCardList(filteredList),
+                desktop: _buildDataTable(filteredList),
               ),
             ),
           ],
@@ -111,7 +223,12 @@ class _EmployeeContentState extends State<_EmployeeContent> {
             child: CustomCard(
               onTap: () => Navigator.push(
                 context,
-                MaterialPageRoute(builder: (_) => AddEditEmployeeScreen(employee: employee)),
+                MaterialPageRoute(
+                  builder: (_) => AddEditEmployeeScreen(
+                    employee: employee,
+                    isReadOnly: true,
+                  ),
+                ),
               ),
               child: Row(
                 children: [
@@ -120,7 +237,10 @@ class _EmployeeContentState extends State<_EmployeeContent> {
                     backgroundColor: AppColors.primary.withOpacity(0.1),
                     child: Text(
                       employee.name.substring(0, 1).toUpperCase(),
-                      style: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        color: AppColors.primary,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   const SizedBox(width: AppSpacing.m),
@@ -130,7 +250,10 @@ class _EmployeeContentState extends State<_EmployeeContent> {
                       children: [
                         Text(
                           employee.name,
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 16,
+                          ),
                         ),
                         Text(
                           'Aadhar: ${employee.aadharNumber}',
@@ -146,8 +269,49 @@ class _EmployeeContentState extends State<_EmployeeContent> {
                       const SizedBox(height: 4),
                       Text(
                         '₹${employee.hourlyRate.toInt()}/hr',
-                        style: const TextStyle(fontWeight: FontWeight.bold, color: AppColors.primary),
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.primary,
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(width: AppSpacing.s),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (_showArchived)
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(
+                            Icons.unarchive_outlined,
+                            size: 18,
+                            color: Colors.blue,
+                          ),
+                          onPressed: () => _unarchiveEmployee(employee),
+                        )
+                      else ...[
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          onPressed: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) =>
+                                  AddEditEmployeeScreen(employee: employee),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          visualDensity: VisualDensity.compact,
+                          icon: const Icon(
+                            Icons.archive_outlined,
+                            size: 18,
+                            color: Colors.orange,
+                          ),
+                          onPressed: () => _archiveEmployee(employee),
+                        ),
+                      ],
                     ],
                   ),
                 ],
@@ -167,6 +331,7 @@ class _EmployeeContentState extends State<_EmployeeContent> {
         child: SizedBox(
           width: double.infinity,
           child: DataTable(
+            showCheckboxColumn: false,
             columnSpacing: 48,
             headingRowColor: WidgetStateProperty.all(AppColors.backgroundAlt),
             columns: const [
@@ -177,50 +342,93 @@ class _EmployeeContentState extends State<_EmployeeContent> {
               DataColumn(label: Text('Actions')),
             ],
             rows: employees.map((employee) {
-              return DataRow(cells: [
-                DataCell(
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 16,
-                        backgroundColor: AppColors.primary.withOpacity(0.1),
-                        child: Text(employee.name.substring(0, 1), style: const TextStyle(fontSize: 12)),
-                      ),
-                      const SizedBox(width: 12),
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(employee.name, style: const TextStyle(fontWeight: FontWeight.bold)),
-                          Text(employee.phone, style: const TextStyle(fontSize: 12, color: AppColors.textMedium)),
-                        ],
-                      ),
-                    ],
+              return DataRow(
+                onSelectChanged: (_) => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) => AddEditEmployeeScreen(
+                      employee: employee,
+                      isReadOnly: true,
+                    ),
                   ),
                 ),
-                DataCell(Text(employee.aadharNumber)),
-                DataCell(Text(DateFormat('dd/MM/yyyy').format(employee.dateOfBirth))),
-                DataCell(_SalaryTypeBadge(type: employee.salaryType)),
-                DataCell(
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 18),
-                        onPressed: () => Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (_) => AddEditEmployeeScreen(employee: employee)),
+                cells: [
+                  DataCell(
+                    Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 16,
+                          backgroundColor: AppColors.primary.withOpacity(0.1),
+                          child: Text(
+                            employee.name.substring(0, 1),
+                            style: const TextStyle(fontSize: 12),
+                          ),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete_outline, size: 18, color: AppColors.error),
-                        onPressed: () {
-                          // Handle delete
-                        },
-                      ),
-                    ],
+                        const SizedBox(width: 12),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              employee.name,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            Text(
+                              employee.phone,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textMedium,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
-                ),
-              ]);
+                  DataCell(Text(employee.aadharNumber)),
+                  DataCell(
+                    Text(DateFormat('dd/MM/yyyy').format(employee.dateOfBirth)),
+                  ),
+                  DataCell(_SalaryTypeBadge(type: employee.salaryType)),
+                  DataCell(
+                    Row(
+                      children: [
+                        if (_showArchived)
+                          IconButton(
+                            icon: const Icon(
+                              Icons.unarchive_outlined,
+                              size: 18,
+                              color: Colors.blue,
+                            ),
+                            onPressed: () => _unarchiveEmployee(employee),
+                          )
+                        else ...[
+                          IconButton(
+                            icon: const Icon(Icons.edit_outlined, size: 18),
+                            onPressed: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) =>
+                                    AddEditEmployeeScreen(employee: employee),
+                              ),
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(
+                              Icons.archive_outlined,
+                              size: 18,
+                              color: Colors.orange,
+                            ),
+                            onPressed: () => _archiveEmployee(employee),
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              );
             }).toList(),
           ),
         ),
@@ -246,7 +454,7 @@ class _SalaryTypeBadge extends StatelessWidget {
         type,
         style: TextStyle(
           color: isDaily ? Colors.blue : Colors.purple,
-          fontSize: 10, 
+          fontSize: 10,
           fontWeight: FontWeight.bold,
         ),
       ),

@@ -13,7 +13,9 @@ class EmployeeService {
 
   Stream<List<Employee>> getEmployees() {
     return _firestore.collection('employees').snapshots().map((snapshot) {
-      return snapshot.docs.map((doc) => Employee.fromMap(doc.data(), doc.id)).toList();
+      return snapshot.docs
+          .map((doc) => Employee.fromMap(doc.data(), doc.id))
+          .toList();
     });
   }
 
@@ -22,7 +24,22 @@ class EmployeeService {
   }
 
   Future<void> updateEmployee(Employee employee) async {
-    await _firestore.collection('employees').doc(employee.id).update(employee.toMap());
+    await _firestore
+        .collection('employees')
+        .doc(employee.id)
+        .update(employee.toMap());
+  }
+
+  Future<void> archiveEmployee(String id) async {
+    await _firestore.collection('employees').doc(id).update({
+      'status': 'Archived',
+    });
+  }
+
+  Future<void> unarchiveEmployee(String id) async {
+    await _firestore.collection('employees').doc(id).update({
+      'status': 'Active',
+    });
   }
 
   Future<void> deleteEmployee(String id) async {

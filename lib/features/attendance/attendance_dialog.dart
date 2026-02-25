@@ -3,6 +3,7 @@ import '../../models/employee.dart';
 import '../../models/attendance.dart';
 import '../../models/shift.dart';
 import '../../core/constants/app_constants.dart';
+import '../../core/widgets/hour_picker.dart';
 
 class AttendanceDialog extends StatefulWidget {
   final Employee employee;
@@ -33,7 +34,7 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
     super.initState();
     _isPresent = widget.initialAttendance.isPresent;
     _segments = List.from(widget.initialAttendance.segments);
-    
+
     // Try to auto-detect if the current segment matches a shift template
     if (_segments.length == 1 && _isPresent) {
       final seg = _segments[0];
@@ -55,12 +56,12 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
 
   double get _totalWorkedHours {
     double total = _segments.fold(0.0, (sum, s) => sum + s.durationHours);
-    
+
     // Subtract 1 hour for lunch if a shift template is selected
     if (_selectedShiftId != null) {
       total = (total - 1.0).clamp(0.0, 24.0);
     }
-    
+
     return total;
   }
 
@@ -86,18 +87,24 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
       } else {
         // Select
         _selectedShiftId = shift.id;
-        _segments = [TimeSegment(startTime: shift.startTime, endTime: shift.endTime)];
+        _segments = [
+          TimeSegment(startTime: shift.startTime, endTime: shift.endTime),
+        ];
         _isPresent = true;
       }
     });
   }
 
-  Future<void> _selectTime(BuildContext context, int index, bool isStart) async {
+  Future<void> _selectTime(
+    BuildContext context,
+    int index,
+    bool isStart,
+  ) async {
     if (_selectedShiftId != null) return; // Disabled if template selected
 
     final segment = _segments[index];
     final initialTime = isStart ? segment.startTime : segment.endTime;
-    
+
     TimeOfDay initialTimeOfDay = const TimeOfDay(hour: 9, minute: 0);
     try {
       if (initialTime.contains(' ')) {
@@ -111,18 +118,22 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
         initialTimeOfDay = TimeOfDay(hour: hour, minute: minute);
       } else if (initialTime.contains(':')) {
         final parts = initialTime.split(':');
-        initialTimeOfDay = TimeOfDay(hour: int.parse(parts[0]), minute: int.parse(parts[1]));
+        initialTimeOfDay = TimeOfDay(
+          hour: int.parse(parts[0]),
+          minute: int.parse(parts[1]),
+        );
       }
     } catch (_) {}
 
-    final TimeOfDay? picked = await showTimePicker(
+    final int? pickedHour = await showHourPicker(
       context: context,
-      initialTime: initialTimeOfDay,
+      initialHour: initialTimeOfDay.hour,
+      title: isStart ? 'Select Start Hour' : 'Select End Hour',
     );
 
-    if (picked != null) {
+    if (pickedHour != null) {
       setState(() {
-        final timeStr = '${picked.hour.toString().padLeft(2, '0')}:${picked.minute.toString().padLeft(2, '0')}';
+        final timeStr = '${pickedHour.toString().padLeft(2, '0')}:00';
         _segments[index] = TimeSegment(
           startTime: isStart ? timeStr : segment.startTime,
           endTime: isStart ? segment.endTime : timeStr,
@@ -147,8 +158,20 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(widget.employee.name, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                Text('ID: ${widget.employee.id.substring(0, 8)}', style: const TextStyle(fontSize: 12, color: AppColors.textMedium)),
+                Text(
+                  widget.employee.name,
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                Text(
+                  'ID: ${widget.employee.id.substring(0, 8)}',
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMedium,
+                  ),
+                ),
               ],
             ),
           ),
@@ -162,8 +185,13 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               SwitchListTile(
-                title: const Text('Present Today', style: TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text(_isPresent ? 'Marking as present' : 'Marking as absent'),
+                title: const Text(
+                  'Present Today',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  _isPresent ? 'Marking as present' : 'Marking as absent',
+                ),
                 value: _isPresent,
                 onChanged: (val) {
                   setState(() {
@@ -178,7 +206,10 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
               ),
               if (_isPresent) ...[
                 const Divider(),
-                const Text('Quick Shift Templates', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                const Text(
+                  'Quick Shift Templates',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                ),
                 const SizedBox(height: 8),
                 Wrap(
                   spacing: 8,
@@ -191,9 +222,13 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
                       selectedColor: AppColors.primary.withOpacity(0.2),
                       backgroundColor: AppColors.primary.withOpacity(0.05),
                       labelStyle: TextStyle(
-                        fontSize: 12, 
-                        color: isSelected ? AppColors.primary : AppColors.textMedium,
-                        fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                        fontSize: 12,
+                        color: isSelected
+                            ? AppColors.primary
+                            : AppColors.textMedium,
+                        fontWeight: isSelected
+                            ? FontWeight.bold
+                            : FontWeight.normal,
                       ),
                     );
                   }).toList(),
@@ -202,39 +237,57 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
                 const Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text('Time Segments', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
+                    Text(
+                      'Time Segments',
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
-                ...List.generate(_segments.length, (index) => Padding(
-                  padding: const EdgeInsets.only(bottom: 8.0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _buildTimeField(
-                          'In', 
-                          _segments[index].startTime, 
-                          isTemplateSelected ? null : () => _selectTime(context, index, true),
+                ...List.generate(
+                  _segments.length,
+                  (index) => Padding(
+                    padding: const EdgeInsets.only(bottom: 8.0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: _buildTimeField(
+                            'In',
+                            _segments[index].startTime,
+                            isTemplateSelected
+                                ? null
+                                : () => _selectTime(context, index, true),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: _buildTimeField(
-                          'Out', 
-                          _segments[index].endTime, 
-                          isTemplateSelected ? null : () => _selectTime(context, index, false),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _buildTimeField(
+                            'Out',
+                            _segments[index].endTime,
+                            isTemplateSelected
+                                ? null
+                                : () => _selectTime(context, index, false),
+                          ),
                         ),
-                      ),
-                      if (!isTemplateSelected)
-                        IconButton(
-                          icon: const Icon(Icons.remove_circle_outline, color: AppColors.error),
-                          onPressed: () => _removeSegment(index),
-                        ),
-                      if (isTemplateSelected)
-                        const SizedBox(width: 48), // Spacer to maintain alignment
-                    ],
+                        if (!isTemplateSelected)
+                          IconButton(
+                            icon: const Icon(
+                              Icons.remove_circle_outline,
+                              color: AppColors.error,
+                            ),
+                            onPressed: () => _removeSegment(index),
+                          ),
+                        if (isTemplateSelected)
+                          const SizedBox(
+                            width: 48,
+                          ), // Spacer to maintain alignment
+                      ],
+                    ),
                   ),
-                )),
+                ),
                 if (!isTemplateSelected)
                   TextButton.icon(
                     onPressed: _addSegment,
@@ -248,7 +301,13 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Worked Hours', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          const Text(
+                            'Worked Hours',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
                           const SizedBox(height: 4),
                           Container(
                             padding: const EdgeInsets.all(12),
@@ -259,7 +318,9 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
                             ),
                             child: Text(
                               _totalWorkedHours.toStringAsFixed(2),
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                           ),
                         ],
@@ -270,13 +331,22 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text('Overtime (Hrs)', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+                          const Text(
+                            'Overtime (Hrs)',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 12,
+                            ),
+                          ),
                           const SizedBox(height: 4),
                           TextField(
                             controller: _overtimeController,
                             keyboardType: TextInputType.number,
                             decoration: const InputDecoration(
-                              contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                              contentPadding: EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 8,
+                              ),
                             ),
                           ),
                         ],
@@ -290,19 +360,24 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
         ),
       ),
       actions: [
-        TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
         ElevatedButton(
-          onPressed: (_isPresent && _totalWorkedHours <= 0) 
-            ? null 
-            : () {
-                final attendance = widget.initialAttendance.copyWith(
-                  isPresent: _isPresent,
-                  hoursWorked: _isPresent ? _totalWorkedHours : 0.0,
-                  overtimeHours: _isPresent ? (double.tryParse(_overtimeController.text) ?? 0.0) : 0.0,
-                  segments: _isPresent ? _segments : [],
-                );
-                Navigator.pop(context, attendance);
-              },
+          onPressed: (_isPresent && _totalWorkedHours <= 0)
+              ? null
+              : () {
+                  final attendance = widget.initialAttendance.copyWith(
+                    isPresent: _isPresent,
+                    hoursWorked: _isPresent ? _totalWorkedHours : 0.0,
+                    overtimeHours: _isPresent
+                        ? (double.tryParse(_overtimeController.text) ?? 0.0)
+                        : 0.0,
+                    segments: _isPresent ? _segments : [],
+                  );
+                  Navigator.pop(context, attendance);
+                },
           child: const Text('Confirm'),
         ),
       ],
@@ -316,12 +391,17 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 10, color: AppColors.textMedium)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 10, color: AppColors.textMedium),
+          ),
           const SizedBox(height: 4),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
             decoration: BoxDecoration(
-              color: isDisabled ? AppColors.backgroundAlt.withOpacity(0.5) : Colors.transparent,
+              color: isDisabled
+                  ? AppColors.backgroundAlt.withOpacity(0.5)
+                  : Colors.transparent,
               border: Border.all(color: Colors.black.withOpacity(0.1)),
               borderRadius: BorderRadius.circular(8),
             ),
@@ -329,13 +409,19 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  value.isEmpty ? '--:--' : value, 
+                  value.isEmpty ? '--:--' : value,
                   style: TextStyle(
                     fontWeight: FontWeight.w600,
-                    color: isDisabled ? AppColors.textMedium : AppColors.textHigh,
+                    color: isDisabled
+                        ? AppColors.textMedium
+                        : AppColors.textHigh,
                   ),
                 ),
-                Icon(Icons.access_time, size: 14, color: isDisabled ? AppColors.textLow : AppColors.textMedium),
+                Icon(
+                  Icons.access_time,
+                  size: 14,
+                  color: isDisabled ? AppColors.textLow : AppColors.textMedium,
+                ),
               ],
             ),
           ),

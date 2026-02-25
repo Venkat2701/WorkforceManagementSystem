@@ -7,11 +7,17 @@ import '../../services/employee_service.dart';
 
 class AddEditEmployeeScreen extends ConsumerStatefulWidget {
   final Employee? employee;
+  final bool isReadOnly;
 
-  const AddEditEmployeeScreen({super.key, this.employee});
+  const AddEditEmployeeScreen({
+    super.key,
+    this.employee,
+    this.isReadOnly = false,
+  });
 
   @override
-  ConsumerState<AddEditEmployeeScreen> createState() => _AddEditEmployeeScreenState();
+  ConsumerState<AddEditEmployeeScreen> createState() =>
+      _AddEditEmployeeScreenState();
 }
 
 class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
@@ -34,21 +40,31 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
     _nameController = TextEditingController(text: employee?.name);
     _phoneController = TextEditingController(text: employee?.phone);
     _aadharController = TextEditingController(text: employee?.aadharNumber);
-    
+
     final initialHourlyRate = employee?.hourlyRate ?? 100.0;
-    _hourlyRateController = TextEditingController(text: initialHourlyRate.toStringAsFixed(2));
+    _hourlyRateController = TextEditingController(
+      text: initialHourlyRate.toStringAsFixed(2),
+    );
     _overtimeRateController = TextEditingController(
       text: employee?.overtimeRate.toString() ?? '150.0',
     );
-    
+
     _salaryType = employee?.salaryType ?? 'Daily';
-    
+
     // Calculate initial daily/monthly values
-    double dailyVal = _salaryType == 'Daily' ? initialHourlyRate * 8 : (initialHourlyRate * 8);
-    double monthlyVal = _salaryType == 'Monthly' ? initialHourlyRate * 8 * 26 : (initialHourlyRate * 8 * 26);
-    
-    _dailySalaryController = TextEditingController(text: dailyVal.toStringAsFixed(0));
-    _monthlySalaryController = TextEditingController(text: monthlyVal.toStringAsFixed(0));
+    double dailyVal = _salaryType == 'Daily'
+        ? initialHourlyRate * 8
+        : (initialHourlyRate * 8);
+    double monthlyVal = _salaryType == 'Monthly'
+        ? initialHourlyRate * 8 * 26
+        : (initialHourlyRate * 8 * 26);
+
+    _dailySalaryController = TextEditingController(
+      text: dailyVal.toStringAsFixed(0),
+    );
+    _monthlySalaryController = TextEditingController(
+      text: monthlyVal.toStringAsFixed(0),
+    );
 
     _selectedDob = employee?.dateOfBirth;
 
@@ -99,15 +115,19 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
       // Validate active salary is not 0
       final dailyAmt = double.tryParse(_dailySalaryController.text) ?? 0;
       final monthlyAmt = double.tryParse(_monthlySalaryController.text) ?? 0;
-      
+
       if (_salaryType == 'Daily' && dailyAmt <= 0) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid Daily Salary')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid Daily Salary')),
+        );
         return;
       }
       if (_salaryType == 'Monthly' && monthlyAmt <= 0) {
         setState(() => _isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Please enter a valid Monthly Salary')));
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Please enter a valid Monthly Salary')),
+        );
         return;
       }
 
@@ -134,7 +154,9 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
       if (mounted) Navigator.pop(context);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -146,7 +168,13 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
     return Scaffold(
       backgroundColor: AppColors.backgroundAlt,
       appBar: AppBar(
-        title: Text(widget.employee == null ? 'Add New Employee' : 'Edit Employee'),
+        title: Text(
+          widget.isReadOnly
+              ? 'Employee Details'
+              : (widget.employee == null
+                    ? 'Add New Employee'
+                    : 'Edit Employee'),
+        ),
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         centerTitle: true,
@@ -163,89 +191,112 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
                 children: [
                   _buildSectionTitle('Employee Details'),
                   const SizedBox(height: AppSpacing.m),
-                  
+
                   _buildTextField(
-                    'Full Name', 
-                    _nameController, 
+                    'Full Name',
+                    _nameController,
                     Icons.person_outline,
                     hint: 'Enter first and last name',
+                    readOnly: widget.isReadOnly,
                   ),
                   const SizedBox(height: AppSpacing.m),
-                  
+
                   _buildDatePicker(context),
                   const SizedBox(height: AppSpacing.m),
 
                   _buildTextField(
-                    'Aadhar Card Number', 
-                    _aadharController, 
-                    Icons.credit_card, 
+                    'Aadhar Card Number',
+                    _aadharController,
+                    Icons.credit_card,
                     keyboardType: TextInputType.number,
                     hint: '12-digit number',
                     maxLength: 12,
+                    readOnly: widget.isReadOnly,
                     validator: (val) {
                       if (val == null || val.isEmpty) return 'Field required';
                       if (val.length != 12) return 'Must be 12 digits';
-                      if (!RegExp(r'^[0-9]+$').hasMatch(val)) return 'Digits only';
+                      if (!RegExp(r'^[0-9]+$').hasMatch(val))
+                        return 'Digits only';
                       return null;
                     },
                   ),
                   const SizedBox(height: AppSpacing.m),
 
                   _buildTextField(
-                    'Phone Number', 
-                    _phoneController, 
-                    Icons.phone_outlined, 
+                    'Phone Number',
+                    _phoneController,
+                    Icons.phone_outlined,
                     keyboardType: TextInputType.phone,
                     maxLength: 10,
+                    readOnly: widget.isReadOnly,
                     validator: (val) {
                       if (val == null || val.isEmpty) return 'Field required';
                       if (val.length != 10) return 'Must be 10 digits';
-                      if (!RegExp(r'^[0-9]+$').hasMatch(val)) return 'Digits only';
+                      if (!RegExp(r'^[0-9]+$').hasMatch(val))
+                        return 'Digits only';
                       return null;
                     },
                   ),
-                  
+
                   const SizedBox(height: AppSpacing.xl),
                   _buildSectionTitle('Salary Details'),
                   const SizedBox(height: AppSpacing.m),
-                  
+
                   _buildSalaryTypeRadio(),
                   const SizedBox(height: AppSpacing.m),
 
                   Row(
                     children: [
                       Expanded(
-                      child: _buildTextField(
-                        'Hourly Rate (₹)', 
-                        _hourlyRateController, 
-                        Icons.currency_rupee, 
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        readOnly: true,
-                        hint: 'Autocalculated',
+                        child: _buildTextField(
+                          'Hourly Rate (₹)',
+                          _hourlyRateController,
+                          Icons.currency_rupee,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          readOnly: true,
+                          hint: 'Autocalculated',
+                        ),
                       ),
-                    ),
                       const SizedBox(width: AppSpacing.m),
                       Expanded(
                         child: _buildTextField(
-                          'Overtime Rate per hour (₹)', 
-                          _overtimeRateController, 
-                          Icons.more_time, 
-                          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          'Overtime Rate per hour (₹)',
+                          _overtimeRateController,
+                          Icons.more_time,
+                          keyboardType: const TextInputType.numberWithOptions(
+                            decimal: true,
+                          ),
+                          readOnly: widget.isReadOnly,
                         ),
                       ),
                     ],
                   ),
-                  
-                  const SizedBox(height: AppSpacing.xxl),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _save,
-                      child: _isLoading 
-                        ? const SizedBox(height: 20, width: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                        : Text(widget.employee == null ? 'Save Employee' : 'Update Employee'),
+
+                  if (!widget.isReadOnly)
+                    const SizedBox(height: AppSpacing.xxl),
+                  if (!widget.isReadOnly)
+                    SizedBox(
+                      width: double.infinity,
+                      child: ElevatedButton(
+                        onPressed: _isLoading ? null : _save,
+                        child: _isLoading
+                            ? const SizedBox(
+                                height: 20,
+                                width: 20,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                            : Text(
+                                widget.employee == null
+                                    ? 'Save Employee'
+                                    : 'Update Employee',
+                              ),
+                      ),
                     ),
-                  ),
                 ],
               ),
             ),
@@ -258,18 +309,35 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
   Widget _buildSectionTitle(String title) {
     return Text(
       title,
-      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: AppColors.textHigh),
+      style: const TextStyle(
+        fontWeight: FontWeight.bold,
+        fontSize: 18,
+        color: AppColors.textHigh,
+      ),
     );
   }
 
-  Widget _buildTextField(String label, TextEditingController controller, IconData icon, {TextInputType? keyboardType, String? hint, int? maxLength, bool readOnly = false, Widget? suffixIcon, String? Function(String?)? validator}) {
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller,
+    IconData icon, {
+    TextInputType? keyboardType,
+    String? hint,
+    int? maxLength,
+    bool readOnly = false,
+    Widget? suffixIcon,
+    String? Function(String?)? validator,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+            Text(
+              label,
+              style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+            ),
             if (maxLength != null)
               ValueListenableBuilder(
                 valueListenable: controller,
@@ -281,7 +349,9 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
                     style: TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
-                      color: isComplete ? const Color(0xFF50C878) : AppColors.error,
+                      color: isComplete
+                          ? const Color(0xFF50C878)
+                          : AppColors.error,
                     ),
                   );
                 },
@@ -301,7 +371,8 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
             fillColor: readOnly ? AppColors.backgroundAlt : Colors.white,
             hintText: hint,
           ),
-          validator: validator ?? (val) => val!.isEmpty ? 'Field required' : null,
+          validator:
+              validator ?? (val) => val!.isEmpty ? 'Field required' : null,
         ),
       ],
     );
@@ -311,27 +382,36 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Date of Birth', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        const Text(
+          'Date of Birth',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        ),
         const SizedBox(height: 8),
         InkWell(
-          onTap: () => _selectDate(context),
+          onTap: widget.isReadOnly ? null : () => _selectDate(context),
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
             decoration: BoxDecoration(
-              color: Colors.white,
+              color: widget.isReadOnly ? AppColors.backgroundAlt : Colors.white,
               borderRadius: BorderRadius.circular(AppRadius.small),
               border: Border.all(color: Colors.black.withOpacity(0.1)),
             ),
             child: Row(
               children: [
-                const Icon(Icons.calendar_month_outlined, color: AppColors.textMedium, size: 20),
+                const Icon(
+                  Icons.calendar_month_outlined,
+                  color: AppColors.textMedium,
+                  size: 20,
+                ),
                 const SizedBox(width: 12),
                 Text(
-                  _selectedDob == null 
-                    ? 'Select Date' 
-                    : DateFormat('dd/MM/yyyy').format(_selectedDob!),
+                  _selectedDob == null
+                      ? 'Select Date'
+                      : DateFormat('dd/MM/yyyy').format(_selectedDob!),
                   style: TextStyle(
-                    color: _selectedDob == null ? AppColors.textLow : AppColors.textHigh,
+                    color: _selectedDob == null
+                        ? AppColors.textLow
+                        : AppColors.textHigh,
                   ),
                 ),
               ],
@@ -346,9 +426,12 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Salary Basis', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+        const Text(
+          'Salary Basis',
+          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14),
+        ),
         const SizedBox(height: 8),
-        
+
         // Daily Salary Row
         Row(
           children: [
@@ -357,10 +440,12 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
                 title: const Text('Salary per day'),
                 value: 'Daily',
                 groupValue: _salaryType,
-                onChanged: (val) {
-                  setState(() => _salaryType = val!);
-                  _updateHourlyRate();
-                },
+                onChanged: widget.isReadOnly
+                    ? null
+                    : (val) {
+                        setState(() => _salaryType = val!);
+                        _updateHourlyRate();
+                      },
                 activeColor: AppColors.primary,
                 contentPadding: EdgeInsets.zero,
               ),
@@ -371,10 +456,14 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
                 child: TextFormField(
                   controller: _dailySalaryController,
                   keyboardType: TextInputType.number,
+                  readOnly: widget.isReadOnly,
                   decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.currency_rupee, size: 16),
                     hintText: 'Amount',
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                 ),
               ),
@@ -389,10 +478,12 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
                 title: const Text('Salary per month'),
                 value: 'Monthly',
                 groupValue: _salaryType,
-                onChanged: (val) {
-                  setState(() => _salaryType = val!);
-                  _updateHourlyRate();
-                },
+                onChanged: widget.isReadOnly
+                    ? null
+                    : (val) {
+                        setState(() => _salaryType = val!);
+                        _updateHourlyRate();
+                      },
                 activeColor: AppColors.primary,
                 contentPadding: EdgeInsets.zero,
               ),
@@ -403,10 +494,14 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
                 child: TextFormField(
                   controller: _monthlySalaryController,
                   keyboardType: TextInputType.number,
+                  readOnly: widget.isReadOnly,
                   decoration: const InputDecoration(
                     prefixIcon: Icon(Icons.currency_rupee, size: 16),
                     hintText: 'Amount',
-                    contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                    contentPadding: EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 8,
+                    ),
                   ),
                 ),
               ),
