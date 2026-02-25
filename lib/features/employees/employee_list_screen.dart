@@ -161,16 +161,20 @@ class _EmployeeContentState extends ConsumerState<_EmployeeContent> {
               child: Row(
                 children: [
                   SegmentedButton<bool>(
+                    style: SegmentedButton.styleFrom(
+                      visualDensity: VisualDensity.compact,
+                      textStyle: const TextStyle(fontSize: 12),
+                    ),
                     segments: const [
                       ButtonSegment(
                         value: false,
-                        label: Text('Active'),
-                        icon: Icon(Icons.people_outline),
+                        label: Text('Active', style: TextStyle(fontSize: 12)),
+                        icon: Icon(Icons.people_outline, size: 16),
                       ),
                       ButtonSegment(
                         value: true,
-                        label: Text('Archived'),
-                        icon: Icon(Icons.archive_outlined),
+                        label: Text('Archived', style: TextStyle(fontSize: 12)),
+                        icon: Icon(Icons.archive_outlined, size: 16),
                       ),
                     ],
                     selected: <bool>{_showArchived},
@@ -233,7 +237,7 @@ class _EmployeeContentState extends ConsumerState<_EmployeeContent> {
               child: Row(
                 children: [
                   CircleAvatar(
-                    radius: 24,
+                    radius: 20,
                     backgroundColor: AppColors.primary.withOpacity(0.1),
                     child: Text(
                       employee.name.substring(0, 1).toUpperCase(),
@@ -252,7 +256,7 @@ class _EmployeeContentState extends ConsumerState<_EmployeeContent> {
                           employee.name,
                           style: const TextStyle(
                             fontWeight: FontWeight.bold,
-                            fontSize: 16,
+                            fontSize: 14,
                           ),
                         ),
                         Text(
@@ -272,6 +276,7 @@ class _EmployeeContentState extends ConsumerState<_EmployeeContent> {
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           color: AppColors.primary,
+                          fontSize: 12,
                         ),
                       ),
                     ],
