@@ -15,6 +15,9 @@ class AddEditEmployeeScreen extends ConsumerStatefulWidget {
     this.isReadOnly = false,
   });
 
+  String _formatDateKey(DateTime date) =>
+      "${date.year}-${date.month.toString().padLeft(2, '0')}-${date.day.toString().padLeft(2, '0')}";
+
   @override
   ConsumerState<AddEditEmployeeScreen> createState() =>
       _AddEditEmployeeScreenState();
@@ -131,6 +134,38 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
         return;
       }
 
+      final newHourlyRate =
+          double.tryParse(_hourlyRateController.text) ?? 100.0;
+      final newOvertimeRate =
+          double.tryParse(_overtimeRateController.text) ?? 150.0;
+
+      Map<String, double> updatedHourlyHistory = Map.from(
+        widget.employee?.hourlyRateHistory ?? {},
+      );
+      Map<String, double> updatedOvertimeHistory = Map.from(
+        widget.employee?.overtimeRateHistory ?? {},
+      );
+
+      // For new employees, set initial rate starting from their joined date
+      if (widget.employee == null) {
+        final joinedStr = widget._formatDateKey(DateTime.now());
+        updatedHourlyHistory[joinedStr] = newHourlyRate;
+        updatedOvertimeHistory[joinedStr] = newOvertimeRate;
+      } else {
+        // If it's an existing employee, check if rates have changed
+        final oldHourly = widget.employee!.hourlyRate;
+        final oldOvertime = widget.employee!.overtimeRate;
+
+        if (newHourlyRate != oldHourly || newOvertimeRate != oldOvertime) {
+          // Logically, external updates reflect starting "next working day"
+          final tomorrow = DateTime.now().add(const Duration(days: 1));
+          final tomorrowStr = widget._formatDateKey(tomorrow);
+
+          updatedHourlyHistory[tomorrowStr] = newHourlyRate;
+          updatedOvertimeHistory[tomorrowStr] = newOvertimeRate;
+        }
+      }
+
       final employee = Employee(
         id: widget.employee?.id ?? '',
         name: _nameController.text.trim(),
@@ -138,11 +173,13 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
         aadharNumber: _aadharController.text.trim(),
         dateOfBirth: _selectedDob!,
         salaryType: _salaryType,
-        hourlyRate: double.tryParse(_hourlyRateController.text) ?? 100.0,
-        overtimeRate: double.tryParse(_overtimeRateController.text) ?? 150.0,
+        hourlyRate: newHourlyRate,
+        overtimeRate: newOvertimeRate,
         shiftId: widget.employee?.shiftId ?? 'Default',
         status: widget.employee?.status ?? 'Active',
         joinedDate: widget.employee?.joinedDate ?? DateTime.now(),
+        hourlyRateHistory: updatedHourlyHistory,
+        overtimeRateHistory: updatedOvertimeHistory,
       );
 
       if (widget.employee == null) {

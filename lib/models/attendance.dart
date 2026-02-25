@@ -3,7 +3,7 @@ import 'package:intl/intl.dart';
 
 class TimeSegment {
   final String startTime; // Format: HH:mm
-  final String endTime;   // Format: HH:mm
+  final String endTime; // Format: HH:mm
 
   TimeSegment({required this.startTime, required this.endTime});
 
@@ -11,7 +11,8 @@ class TimeSegment {
     if (startTime.isEmpty || endTime.isEmpty) return 0;
     try {
       DateTime parseTime(String timeStr) {
-        if (timeStr.toUpperCase().contains('AM') || timeStr.toUpperCase().contains('PM')) {
+        if (timeStr.toUpperCase().contains('AM') ||
+            timeStr.toUpperCase().contains('PM')) {
           return DateFormat('hh:mm a').parse(timeStr);
         }
         return DateFormat('HH:mm').parse(timeStr);
@@ -27,10 +28,7 @@ class TimeSegment {
     }
   }
 
-  Map<String, dynamic> toMap() => {
-    'startTime': startTime,
-    'endTime': endTime,
-  };
+  Map<String, dynamic> toMap() => {'startTime': startTime, 'endTime': endTime};
 
   factory TimeSegment.fromMap(Map<String, dynamic> map) => TimeSegment(
     startTime: map['startTime'] ?? '',
@@ -48,6 +46,8 @@ class Attendance {
   final bool isPresent;
   final bool isPaid;
   final List<TimeSegment> segments;
+  final double? hourlyRate;
+  final double? overtimeRate;
 
   Attendance({
     required this.id,
@@ -59,10 +59,16 @@ class Attendance {
     required this.isPresent,
     this.isPaid = false,
     this.segments = const [],
+    this.hourlyRate,
+    this.overtimeRate,
   });
 
   factory Attendance.fromMap(Map<String, dynamic> map, String id) {
-    var segmentList = (map['segments'] as List?)?.map((s) => TimeSegment.fromMap(s as Map<String, dynamic>)).toList() ?? [];
+    var segmentList =
+        (map['segments'] as List?)
+            ?.map((s) => TimeSegment.fromMap(s as Map<String, dynamic>))
+            .toList() ??
+        [];
     return Attendance(
       id: id,
       employeeId: map['employeeId'] ?? '',
@@ -73,6 +79,8 @@ class Attendance {
       isPresent: map['isPresent'] ?? false,
       isPaid: map['isPaid'] ?? false,
       segments: segmentList,
+      hourlyRate: (map['hourlyRate'] as num?)?.toDouble(),
+      overtimeRate: (map['overtimeRate'] as num?)?.toDouble(),
     );
   }
 
@@ -86,6 +94,8 @@ class Attendance {
       'isPresent': isPresent,
       'isPaid': isPaid,
       'segments': segments.map((s) => s.toMap()).toList(),
+      'hourlyRate': hourlyRate,
+      'overtimeRate': overtimeRate,
     };
   }
 
@@ -99,6 +109,8 @@ class Attendance {
     bool? isPresent,
     bool? isPaid,
     List<TimeSegment>? segments,
+    double? hourlyRate,
+    double? overtimeRate,
   }) {
     return Attendance(
       id: id ?? this.id,
@@ -110,6 +122,8 @@ class Attendance {
       isPresent: isPresent ?? this.isPresent,
       isPaid: isPaid ?? this.isPaid,
       segments: segments ?? this.segments,
+      hourlyRate: hourlyRate ?? this.hourlyRate,
+      overtimeRate: overtimeRate ?? this.overtimeRate,
     );
   }
 }

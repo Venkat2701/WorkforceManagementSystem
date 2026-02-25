@@ -457,6 +457,12 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
                     hoursWorked: _isPresent ? regHours : 0.0,
                     overtimeHours: _isPresent ? otValue : 0.0,
                     segments: _isPresent ? _segments : [],
+                    hourlyRate: widget.employee.getHourlyRateForDate(
+                      widget.date,
+                    ),
+                    overtimeRate: widget.employee.getOvertimeRateForDate(
+                      widget.date,
+                    ),
                   );
                   Navigator.pop(context, attendance);
                 },

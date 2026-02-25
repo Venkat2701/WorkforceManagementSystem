@@ -3,30 +3,40 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/salary_record.dart';
 import '../models/attendance.dart';
 import '../models/employee.dart';
-import 'employee_service.dart';
 
 final salaryServiceProvider = Provider((ref) => SalaryService());
 
 class SalaryService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  Future<Map<String, List<WeeklySalary>>> calculateWeeklySalary(DateTime startDate, DateTime endDate) async {
+  Future<Map<String, List<WeeklySalary>>> calculateWeeklySalary(
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
     final weekId = "${startDate.year}_W${(startDate.day / 7).ceil()}";
-    
+
     // 1. Get all employees
     final employeesSnapshot = await _firestore.collection('employees').get();
-    final employees = employeesSnapshot.docs.map((doc) => Employee.fromMap(doc.data(), doc.id)).toList();
+    final employees = employeesSnapshot.docs
+        .map((doc) => Employee.fromMap(doc.data(), doc.id))
+        .toList();
 
     // 2. Get attendance for the period (inclusive of the entire end day)
     final start = DateTime(startDate.year, startDate.month, startDate.day);
-    final end = DateTime(endDate.year, endDate.month, endDate.day).add(const Duration(days: 1));
+    final end = DateTime(
+      endDate.year,
+      endDate.month,
+      endDate.day,
+    ).add(const Duration(days: 1));
 
     final attendanceSnapshot = await _firestore
         .collection('attendance')
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
         .where('date', isLessThan: Timestamp.fromDate(end))
         .get();
-    final attendanceRecords = attendanceSnapshot.docs.map((doc) => Attendance.fromMap(doc.data(), doc.id)).toList();
+    final attendanceRecords = attendanceSnapshot.docs
+        .map((doc) => Attendance.fromMap(doc.data(), doc.id))
+        .toList();
 
     // 3. Aggregate each employee's data
     List<WeeklySalary> allSalaries = [];
@@ -34,23 +44,47 @@ class SalaryService {
     List<WeeklySalary> unpaidSalaries = [];
 
     for (var employee in employees) {
-      final empAttendance = attendanceRecords.where((a) => a.employeeId == employee.id);
-      
+      final empAttendance = attendanceRecords.where(
+        (a) => a.employeeId == employee.id,
+      );
+
       double totalHours = 0, totalOvertime = 0;
       double paidHours = 0, paidOvertime = 0;
       double unpaidHours = 0, unpaidOvertime = 0;
+      double totalBasePay = 0;
+      double totalOvertimePay = 0;
+      double paidBasePay = 0;
+      double paidOvertimePay = 0;
+      double unpaidBasePay = 0;
+      double unpaidOvertimePay = 0;
 
       for (var record in empAttendance) {
         if (record.isPresent) {
           totalHours += record.hoursWorked;
           totalOvertime += record.overtimeHours;
-          
+
+          final recordHourlyRate =
+              record.hourlyRate ?? employee.getHourlyRateForDate(record.date);
+          final recordOvertimeRate =
+              record.overtimeRate ??
+              employee.getOvertimeRateForDate(record.date);
+
+          final basePay = record.hoursWorked * recordHourlyRate;
+          final otPay = record.overtimeHours * recordOvertimeRate;
+
+          totalBasePay += basePay;
+          totalOvertimePay += otPay;
+
           if (record.isPaid) {
             paidHours += record.hoursWorked;
             paidOvertime += record.overtimeHours;
+            paidBasePay += basePay;
+            paidOvertimePay += otPay;
           } else {
             unpaidHours += record.hoursWorked;
             unpaidOvertime += record.overtimeHours;
+            unpaidBasePay += basePay;
+            unpaidOvertimePay += otPay;
           }
         }
       }
@@ -66,72 +100,86 @@ class SalaryService {
       };
 
       if (totalHours > 0) {
-        allSalaries.add(WeeklySalary(
-          totalHours: totalHours, totalOvertime: totalOvertime,
-          baseSalary: totalHours * employee.hourlyRate,
-          overtimePay: totalOvertime * employee.overtimeRate,
-          totalSalary: (totalHours * employee.hourlyRate) + (totalOvertime * employee.overtimeRate),
-          paid: unpaidHours == 0,
-          employeeId: common['employeeId'] as String,
-          employeeName: common['employeeName'] as String,
-          weekId: common['weekId'] as String,
-          startDate: common['startDate'] as DateTime,
-          endDate: common['endDate'] as DateTime,
-          hourlyRate: common['hourlyRate'] as double,
-          overtimeRate: common['overtimeRate'] as double,
-        ));
+        allSalaries.add(
+          WeeklySalary(
+            totalHours: totalHours,
+            totalOvertime: totalOvertime,
+            baseSalary: totalBasePay,
+            overtimePay: totalOvertimePay,
+            totalSalary: totalBasePay + totalOvertimePay,
+            paid: unpaidHours == 0,
+            employeeId: common['employeeId'] as String,
+            employeeName: common['employeeName'] as String,
+            weekId: common['weekId'] as String,
+            startDate: common['startDate'] as DateTime,
+            endDate: common['endDate'] as DateTime,
+            hourlyRate: common['hourlyRate'] as double,
+            overtimeRate: common['overtimeRate'] as double,
+          ),
+        );
       }
 
       if (paidHours > 0) {
-        paidSalaries.add(WeeklySalary(
-          totalHours: paidHours, totalOvertime: paidOvertime,
-          baseSalary: paidHours * employee.hourlyRate,
-          overtimePay: paidOvertime * employee.overtimeRate,
-          totalSalary: (paidHours * employee.hourlyRate) + (paidOvertime * employee.overtimeRate),
-          paid: true,
-          employeeId: common['employeeId'] as String,
-          employeeName: common['employeeName'] as String,
-          weekId: common['weekId'] as String,
-          startDate: common['startDate'] as DateTime,
-          endDate: common['endDate'] as DateTime,
-          hourlyRate: common['hourlyRate'] as double,
-          overtimeRate: common['overtimeRate'] as double,
-        ));
+        paidSalaries.add(
+          WeeklySalary(
+            totalHours: paidHours,
+            totalOvertime: paidOvertime,
+            baseSalary: paidBasePay,
+            overtimePay: paidOvertimePay,
+            totalSalary: paidBasePay + paidOvertimePay,
+            paid: true,
+            employeeId: common['employeeId'] as String,
+            employeeName: common['employeeName'] as String,
+            weekId: common['weekId'] as String,
+            startDate: common['startDate'] as DateTime,
+            endDate: common['endDate'] as DateTime,
+            hourlyRate: common['hourlyRate'] as double,
+            overtimeRate: common['overtimeRate'] as double,
+          ),
+        );
       }
 
       if (unpaidHours > 0) {
-        unpaidSalaries.add(WeeklySalary(
-          totalHours: unpaidHours, totalOvertime: unpaidOvertime,
-          baseSalary: unpaidHours * employee.hourlyRate,
-          overtimePay: unpaidOvertime * employee.overtimeRate,
-          totalSalary: (unpaidHours * employee.hourlyRate) + (unpaidOvertime * employee.overtimeRate),
-          paid: false,
-          employeeId: common['employeeId'] as String,
-          employeeName: common['employeeName'] as String,
-          weekId: common['weekId'] as String,
-          startDate: common['startDate'] as DateTime,
-          endDate: common['endDate'] as DateTime,
-          hourlyRate: common['hourlyRate'] as double,
-          overtimeRate: common['overtimeRate'] as double,
-        ));
+        unpaidSalaries.add(
+          WeeklySalary(
+            totalHours: unpaidHours,
+            totalOvertime: unpaidOvertime,
+            baseSalary: unpaidBasePay,
+            overtimePay: unpaidOvertimePay,
+            totalSalary: unpaidBasePay + unpaidOvertimePay,
+            paid: false,
+            employeeId: common['employeeId'] as String,
+            employeeName: common['employeeName'] as String,
+            weekId: common['weekId'] as String,
+            startDate: common['startDate'] as DateTime,
+            endDate: common['endDate'] as DateTime,
+            hourlyRate: common['hourlyRate'] as double,
+            overtimeRate: common['overtimeRate'] as double,
+          ),
+        );
       }
     }
 
-    return {
-      'all': allSalaries,
-      'paid': paidSalaries,
-      'unpaid': unpaidSalaries,
-    };
+    return {'all': allSalaries, 'paid': paidSalaries, 'unpaid': unpaidSalaries};
   }
 
-  Future<void> markPeriodAsPaid(String employeeId, DateTime startDate, DateTime endDate) async {
+  Future<void> markPeriodAsPaid(
+    String employeeId,
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
     final start = DateTime(startDate.year, startDate.month, startDate.day);
-    final end = DateTime(endDate.year, endDate.month, endDate.day).add(const Duration(days: 1));
+    final end = DateTime(
+      endDate.year,
+      endDate.month,
+      endDate.day,
+    ).add(const Duration(days: 1));
 
     // We only query by date range here because we know it's a supported index.
-    // Filtering for specific employee and unpaid status in memory to avoid 
+    // Filtering for specific employee and unpaid status in memory to avoid
     // requiring a complex composite index in Firestore.
-    final snapshot = await _firestore.collection('attendance')
+    final snapshot = await _firestore
+        .collection('attendance')
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
         .where('date', isLessThan: Timestamp.fromDate(end))
         .get();
@@ -140,22 +188,32 @@ class SalaryService {
     int count = 0;
     for (var doc in snapshot.docs) {
       final data = doc.data();
-      if (data['employeeId'] == employeeId && (data['isPaid'] == false || data['isPaid'] == null)) {
+      if (data['employeeId'] == employeeId &&
+          (data['isPaid'] == false || data['isPaid'] == null)) {
         batch.update(doc.reference, {'isPaid': true});
         count++;
       }
     }
-    
+
     if (count > 0) {
       await batch.commit();
     }
   }
 
-  Future<void> revertPaymentStatus(String employeeId, DateTime startDate, DateTime endDate) async {
+  Future<void> revertPaymentStatus(
+    String employeeId,
+    DateTime startDate,
+    DateTime endDate,
+  ) async {
     final start = DateTime(startDate.year, startDate.month, startDate.day);
-    final end = DateTime(endDate.year, endDate.month, endDate.day).add(const Duration(days: 1));
+    final end = DateTime(
+      endDate.year,
+      endDate.month,
+      endDate.day,
+    ).add(const Duration(days: 1));
 
-    final snapshot = await _firestore.collection('attendance')
+    final snapshot = await _firestore
+        .collection('attendance')
         .where('date', isGreaterThanOrEqualTo: Timestamp.fromDate(start))
         .where('date', isLessThan: Timestamp.fromDate(end))
         .get();
@@ -169,7 +227,7 @@ class SalaryService {
         count++;
       }
     }
-    
+
     if (count > 0) {
       await batch.commit();
     }
