@@ -29,6 +29,8 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
   late TextEditingController _overtimeController;
   String? _selectedShiftId;
 
+  bool _isSyncing = false;
+
   @override
   void initState() {
     super.initState();
@@ -52,17 +54,87 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
     _overtimeController = TextEditingController(
       text: widget.initialAttendance.overtimeHours.toString(),
     );
+    _overtimeController.addListener(_onOvertimeChanged);
   }
 
-  double get _totalWorkedHours {
-    double total = _segments.fold(0.0, (sum, s) => sum + s.durationHours);
+  @override
+  void dispose() {
+    _overtimeController.dispose();
+    super.dispose();
+  }
 
-    // Subtract 1 hour for lunch if a shift template is selected
+  double get _totalPresenceHours =>
+      _segments.fold(0.0, (sum, s) => sum + s.durationHours);
+
+  double get _effectiveTotalHours {
+    double total = _totalPresenceHours;
     if (_selectedShiftId != null) {
       total = (total - 1.0).clamp(0.0, 24.0);
     }
-
     return total;
+  }
+
+  String _adjustTime(String time, double hoursToAdd) {
+    if (time.isEmpty) return '09:00';
+    try {
+      final parts = time.split(':');
+      int h = int.parse(parts[0]);
+      int m = int.parse(parts[1]);
+      int totalMinutes = (h * 60 + m + (hoursToAdd * 60)).round();
+      while (totalMinutes < 0) totalMinutes += 24 * 60;
+      int newH = (totalMinutes ~/ 60) % 24;
+      int newM = totalMinutes % 60;
+      return '${newH.toString().padLeft(2, '0')}:${newM.toString().padLeft(2, '0')}';
+    } catch (_) {
+      return time;
+    }
+  }
+
+  void _onOvertimeChanged() {
+    if (_isSyncing) return;
+    final val = double.tryParse(_overtimeController.text);
+    if (val != null) {
+      if (_selectedShiftId != null) {
+        setState(() {
+          _selectedShiftId = null;
+        });
+      }
+      _updateSegmentsFromOvertime(val);
+    }
+  }
+
+  void _updateOvertimeFromSegments() {
+    if (_isSyncing) return;
+    _isSyncing = true;
+    final ot = _effectiveTotalHours > 8 ? _effectiveTotalHours - 8 : 0.0;
+    final otText = ot.toStringAsFixed(2);
+    if (_overtimeController.text != otText) {
+      _overtimeController.text = otText;
+    }
+    _isSyncing = false;
+  }
+
+  void _updateSegmentsFromOvertime(double newOT) {
+    if (_isSyncing) return;
+    if (_segments.isEmpty) return;
+
+    _isSyncing = true;
+    double targetPresence =
+        (8.0 + newOT + (_selectedShiftId != null ? 1.0 : 0.0)).clamp(0.0, 48.0);
+    double currentPresence = _totalPresenceHours;
+    double adjustment = targetPresence - currentPresence;
+
+    if (adjustment.abs() > 0.01) {
+      setState(() {
+        int lastIndex = _segments.length - 1;
+        final segment = _segments[lastIndex];
+        _segments[lastIndex] = TimeSegment(
+          startTime: segment.startTime,
+          endTime: _adjustTime(segment.endTime, adjustment),
+        );
+      });
+    }
+    _isSyncing = false;
   }
 
   void _addSegment() {
@@ -70,6 +142,7 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
     setState(() {
       _segments.add(TimeSegment(startTime: '09:00', endTime: '18:00'));
     });
+    _updateOvertimeFromSegments();
   }
 
   void _removeSegment(int index) {
@@ -77,6 +150,7 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
     setState(() {
       _segments.removeAt(index);
     });
+    _updateOvertimeFromSegments();
   }
 
   void _toggleShiftTemplate(Shift shift) {
@@ -93,6 +167,7 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
         _isPresent = true;
       }
     });
+    _updateOvertimeFromSegments();
   }
 
   Future<void> _selectTime(
@@ -139,6 +214,7 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
           endTime: isStart ? segment.endTime : timeStr,
         );
       });
+      _updateOvertimeFromSegments();
     }
   }
 
@@ -317,7 +393,10 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
-                              _totalWorkedHours.toStringAsFixed(2),
+                              (_effectiveTotalHours > 8
+                                      ? 8.0
+                                      : _effectiveTotalHours)
+                                  .toStringAsFixed(2),
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                               ),
@@ -365,15 +444,18 @@ class _AttendanceDialogState extends State<AttendanceDialog> {
           child: const Text('Cancel'),
         ),
         ElevatedButton(
-          onPressed: (_isPresent && _totalWorkedHours <= 0)
+          onPressed: (_isPresent && _effectiveTotalHours <= 0)
               ? null
               : () {
+                  final otValue =
+                      double.tryParse(_overtimeController.text) ?? 0.0;
+                  final regHours = _effectiveTotalHours > 8
+                      ? 8.0
+                      : _effectiveTotalHours;
                   final attendance = widget.initialAttendance.copyWith(
                     isPresent: _isPresent,
-                    hoursWorked: _isPresent ? _totalWorkedHours : 0.0,
-                    overtimeHours: _isPresent
-                        ? (double.tryParse(_overtimeController.text) ?? 0.0)
-                        : 0.0,
+                    hoursWorked: _isPresent ? regHours : 0.0,
+                    overtimeHours: _isPresent ? otValue : 0.0,
                     segments: _isPresent ? _segments : [],
                   );
                   Navigator.pop(context, attendance);

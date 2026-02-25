@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
-import '../features/dashboard/dashboard_screen.dart';
-import '../features/employees/employee_list_screen.dart';
-import '../features/attendance/daily_attendance_screen.dart';
-import '../features/salary/weekly_payroll_screen.dart';
-import '../features/shifts/shift_management_screen.dart';
+import '../../features/dashboard/dashboard_screen.dart';
+import '../../features/employees/employee_list_screen.dart';
+import '../../features/attendance/daily_attendance_screen.dart';
+import '../../features/salary/weekly_payroll_screen.dart';
+import '../../features/shifts/shift_management_screen.dart';
 
 class NavigationController extends StatefulWidget {
   const NavigationController({super.key});
@@ -13,7 +13,7 @@ class NavigationController extends StatefulWidget {
 }
 
 class _NavigationControllerState extends State<NavigationController> {
-  int _currentIndex = 0;
+  final int _currentIndex = 0;
 
   final List<Widget> _screens = [
     const DashboardScreen(),
