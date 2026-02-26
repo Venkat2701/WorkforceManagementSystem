@@ -12,7 +12,8 @@ class WeeklyPayrollScreen extends ConsumerStatefulWidget {
   const WeeklyPayrollScreen({super.key});
 
   @override
-  ConsumerState<WeeklyPayrollScreen> createState() => _WeeklyPayrollScreenState();
+  ConsumerState<WeeklyPayrollScreen> createState() =>
+      _WeeklyPayrollScreenState();
 }
 
 class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
@@ -26,7 +27,7 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
 
   List<WeeklySalary> get _filteredSalaries {
     if (_salaryData == null) return [];
-    
+
     switch (_statusFilter) {
       case 'Paid':
         return _salaryData!['paid'] ?? [];
@@ -46,14 +47,15 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
   Future<void> _fetchPayroll() async {
     setState(() => _isLoading = true);
     try {
-      final results = await ref.read(salaryServiceProvider).calculateWeeklySalary(
-            _dateRange.start,
-            _dateRange.end,
-          );
+      final results = await ref
+          .read(salaryServiceProvider)
+          .calculateWeeklySalary(_dateRange.start, _dateRange.end);
       setState(() => _salaryData = results);
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Error: $e')));
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Error: $e')));
       }
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -78,17 +80,20 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
                   child: _isLoading
                       ? const Center(child: CircularProgressIndicator())
                       : _salaryData == null || _filteredSalaries.isEmpty
-                          ? const Center(child: Text('No employees with payout in this range'))
-                          : SingleChildScrollView(
-                              physics: const AlwaysScrollableScrollPhysics(),
-                              child: Column(
-                                children: [
-                                  if (_salaryData != null) _buildSummaryCards(),
-                                  _buildPayrollList(),
-                                  const SizedBox(height: AppSpacing.xl),
-                                ],
-                              ),
+                      ? const Center(
+                          child: Text('No employees with payout in this range'),
+                        )
+                      : CustomScrollView(
+                          physics: const AlwaysScrollableScrollPhysics(),
+                          slivers: [
+                            if (_salaryData != null)
+                              SliverToBoxAdapter(child: _buildSummaryCards()),
+                            _buildPayrollList(context),
+                            const SliverToBoxAdapter(
+                              child: SizedBox(height: AppSpacing.xl),
                             ),
+                          ],
+                        ),
                 ),
               ),
             ],
@@ -106,13 +111,21 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
         builder: (context, constraints) {
           final isWide = constraints.maxWidth > 600;
           return Row(
-            crossAxisAlignment: isWide ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+            crossAxisAlignment: isWide
+                ? CrossAxisAlignment.end
+                : CrossAxisAlignment.start,
             children: [
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text('Payroll Period', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                    const Text(
+                      'Payroll Period',
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
+                    ),
                     const SizedBox(height: 8),
                     GestureDetector(
                       onTap: () async {
@@ -130,16 +143,24 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
                       child: Container(
                         padding: const EdgeInsets.all(AppSpacing.m),
                         decoration: BoxDecoration(
-                          border: Border.all(color: Colors.black.withOpacity(0.05)),
+                          border: Border.all(
+                            color: Colors.black.withOpacity(0.05),
+                          ),
                           borderRadius: BorderRadius.circular(AppRadius.small),
                         ),
                         child: Row(
                           children: [
-                            const Icon(Icons.date_range, size: 18, color: AppColors.primary),
+                            const Icon(
+                              Icons.date_range,
+                              size: 18,
+                              color: AppColors.primary,
+                            ),
                             const SizedBox(width: 8),
                             Text(
                               '${DateFormat('MMM dd').format(_dateRange.start)} - ${DateFormat('MMM dd, yyyy').format(_dateRange.end)}',
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const Spacer(),
                             const Icon(Icons.arrow_drop_down),
@@ -172,9 +193,17 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
       children: [
         _buildFilterChip('All', Colors.grey[600]!, Colors.grey[100]!),
         const SizedBox(width: AppSpacing.s),
-        _buildFilterChip('UnPaid', const Color(0xFFEF5350), const Color(0xFFFFEBEE)),
+        _buildFilterChip(
+          'UnPaid',
+          const Color(0xFFEF5350),
+          const Color(0xFFFFEBEE),
+        ),
         const SizedBox(width: AppSpacing.s),
-        _buildFilterChip('Paid', const Color(0xFF66BB6A), const Color(0xFFE8F5E9)),
+        _buildFilterChip(
+          'Paid',
+          const Color(0xFF66BB6A),
+          const Color(0xFFE8F5E9),
+        ),
       ],
     );
   }
@@ -212,12 +241,27 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
     double totalHours = filtered.fold(0, (sum, s) => sum + s.totalHours);
 
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l, vertical: AppSpacing.m),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.l,
+        vertical: AppSpacing.m,
+      ),
       child: Row(
         children: [
-          Expanded(child: _buildMiniStat('Total Payout', '₹${totalPayout.toStringAsFixed(0)}', AppColors.primary)),
+          Expanded(
+            child: _buildMiniStat(
+              'Total Payout',
+              '₹${totalPayout.toStringAsFixed(0)}',
+              AppColors.primary,
+            ),
+          ),
           const SizedBox(width: AppSpacing.m),
-          Expanded(child: _buildMiniStat('Total Hours', '${totalHours.toStringAsFixed(0)}h', AppColors.textMedium)),
+          Expanded(
+            child: _buildMiniStat(
+              'Total Hours',
+              '${totalHours.toStringAsFixed(0)}h',
+              AppColors.textMedium,
+            ),
+          ),
         ],
       ),
     );
@@ -229,101 +273,209 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(label, style: const TextStyle(fontSize: 12, color: AppColors.textMedium)),
+          Text(
+            label,
+            style: const TextStyle(fontSize: 12, color: AppColors.textMedium),
+          ),
           const SizedBox(height: 4),
-          Text(value, style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: color)),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.bold,
+              color: color,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildPayrollList() {
-    return LayoutBuilder(
+  Widget _buildPayrollList(BuildContext context) {
+    return SliverLayoutBuilder(
       builder: (context, constraints) {
-        final crossAxisCount = constraints.maxWidth > 1200 ? 4 : (constraints.maxWidth > 900 ? 3 : (constraints.maxWidth > 600 ? 2 : 1));
-        final childAspectRatio = constraints.maxWidth > 1200 ? 2.2 : (constraints.maxWidth > 900 ? 2.5 : (constraints.maxWidth > 600 ? 2.8 : 3.5));
+        final width = constraints.crossAxisExtent;
+        final isMobile = width <= 600;
+        final crossAxisCount = isMobile
+            ? 1
+            : (width > 1200 ? 4 : (width > 900 ? 3 : 2));
 
-        return GridView.builder(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
+        return SliverPadding(
           padding: const EdgeInsets.symmetric(horizontal: AppSpacing.l),
-          gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: crossAxisCount,
-            childAspectRatio: childAspectRatio,
-            crossAxisSpacing: AppSpacing.m,
-            mainAxisSpacing: AppSpacing.m,
+          sliver: SliverGrid(
+            gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+              crossAxisCount: crossAxisCount,
+              mainAxisExtent: isMobile ? 120 : 106,
+              crossAxisSpacing: AppSpacing.m,
+              mainAxisSpacing: AppSpacing.m,
+            ),
+            delegate: SliverChildBuilderDelegate((context, index) {
+              final salary = _filteredSalaries[index];
+              return CustomCard(
+                onTap: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => SalarySlipView(
+                        salary: salary,
+                        isReadOnly: _statusFilter == 'All',
+                      ),
+                    ),
+                  );
+                  if (result == true) {
+                    _fetchPayroll();
+                  }
+                },
+                child: Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: isMobile ? double.infinity : 40,
+                      decoration: BoxDecoration(
+                        color: _statusFilter == 'All'
+                            ? Colors.grey.withOpacity(0.2)
+                            : (salary.paid
+                                  ? const Color(0xFF66BB6A)
+                                  : const Color(0xFFEF5350)),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: isMobile
+                          ? Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  salary.employeeName,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${salary.totalHours.toStringAsFixed(1)}h Reg | ${salary.totalOvertime.toStringAsFixed(1)}h Ovt',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: Theme.of(context).textTheme.bodySmall,
+                                ),
+                                const Spacer(),
+                                Row(
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      '₹${salary.totalSalary.toStringAsFixed(0)}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: _statusFilter == 'All'
+                                            ? const Color(0xFFF57C00)
+                                            : (salary.paid
+                                                  ? const Color(0xFF43A047)
+                                                  : const Color(0xFFE53935)),
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                    Text(
+                                      _statusFilter == 'All'
+                                          ? 'TOTAL'
+                                          : (salary.paid ? 'PAID' : 'DUE'),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: _statusFilter == 'All'
+                                            ? const Color(
+                                                0xFFF57C00,
+                                              ).withOpacity(0.8)
+                                            : (salary.paid
+                                                  ? const Color(0xFF66BB6A)
+                                                  : const Color(0xFFEF5350)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            )
+                          : Row(
+                              children: [
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        salary.employeeName,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          fontSize: 16,
+                                        ),
+                                      ),
+                                      Text(
+                                        '${salary.totalHours.toStringAsFixed(1)}h Reg | ${salary.totalOvertime.toStringAsFixed(1)}h Ovt',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: Theme.of(
+                                          context,
+                                        ).textTheme.bodySmall,
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Text(
+                                      '₹${salary.totalSalary.toStringAsFixed(0)}',
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: _statusFilter == 'All'
+                                            ? const Color(0xFFF57C00)
+                                            : (salary.paid
+                                                  ? const Color(0xFF43A047)
+                                                  : const Color(0xFFE53935)),
+                                        fontSize: 18,
+                                      ),
+                                    ),
+                                    Text(
+                                      _statusFilter == 'All'
+                                          ? 'TOTAL'
+                                          : (salary.paid ? 'PAID' : 'DUE'),
+                                      style: TextStyle(
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.bold,
+                                        color: _statusFilter == 'All'
+                                            ? const Color(
+                                                0xFFF57C00,
+                                              ).withOpacity(0.8)
+                                            : (salary.paid
+                                                  ? const Color(0xFF66BB6A)
+                                                  : const Color(0xFFEF5350)),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(
+                      Icons.chevron_right,
+                      size: 20,
+                      color: AppColors.textLow,
+                    ),
+                  ],
+                ),
+              );
+            }, childCount: _filteredSalaries.length),
           ),
-          itemCount: _filteredSalaries.length,
-          itemBuilder: (context, index) {
-            final salary = _filteredSalaries[index];
-            return CustomCard(
-              onTap: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(builder: (_) => SalarySlipView(
-                    salary: salary,
-                    isReadOnly: _statusFilter == 'All',
-                  )),
-                );
-                if (result == true) {
-                  _fetchPayroll();
-                }
-              },
-              child: Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: _statusFilter == 'All' 
-                          ? Colors.grey.withOpacity(0.2) 
-                          : (salary.paid ? const Color(0xFF66BB6A) : const Color(0xFFEF5350)),
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(salary.employeeName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                        Text('${salary.totalHours.toStringAsFixed(1)}h Reg | ${salary.totalOvertime.toStringAsFixed(1)}h Ovt', style: Theme.of(context).textTheme.bodySmall),
-                      ],
-                    ),
-                  ),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.end,
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        '₹${salary.totalSalary.toStringAsFixed(0)}',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold, 
-                          color: _statusFilter == 'All' 
-                              ? const Color(0xFFF57C00) 
-                              : (salary.paid ? const Color(0xFF43A047) : const Color(0xFFE53935)), 
-                          fontSize: 18
-                        ),
-                      ),
-                      Text(
-                        _statusFilter == 'All' ? 'TOTAL' : (salary.paid ? 'PAID' : 'DUE'),
-                        style: TextStyle(
-                          fontSize: 10,
-                          fontWeight: FontWeight.bold,
-                          color: _statusFilter == 'All' 
-                              ? const Color(0xFFF57C00).withOpacity(0.8) 
-                              : (salary.paid ? const Color(0xFF66BB6A) : const Color(0xFFEF5350)),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(width: 8),
-                  const Icon(Icons.chevron_right, size: 20, color: AppColors.textLow),
-                ],
-              ),
-            );
-          },
         );
       },
     );

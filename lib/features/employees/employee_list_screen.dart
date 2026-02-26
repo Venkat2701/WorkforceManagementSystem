@@ -327,110 +327,209 @@ class _EmployeeContentState extends ConsumerState<_EmployeeContent> {
   }
 
   Widget _buildDataTable(List<Employee> employees) {
-    return SingleChildScrollView(
+    return Padding(
       padding: const EdgeInsets.all(AppSpacing.l),
       child: CustomCard(
         padding: EdgeInsets.zero,
-        child: SizedBox(
-          width: double.infinity,
-          child: DataTable(
-            showCheckboxColumn: false,
-            columnSpacing: 48,
-            headingRowColor: WidgetStateProperty.all(AppColors.backgroundAlt),
-            columns: const [
-              DataColumn(label: Text('Employee')),
-              DataColumn(label: Text('Aadhar Number')),
-              DataColumn(label: Text('DOB')),
-              DataColumn(label: Text('Salary Basis')),
-              DataColumn(label: Text('Actions')),
-            ],
-            rows: employees.map((employee) {
-              return DataRow(
-                onSelectChanged: (_) => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => EmployeeDashboardScreen(employee: employee),
-                  ),
+        child: Column(
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: const BoxDecoration(
+                color: AppColors.backgroundAlt,
+                borderRadius: BorderRadius.vertical(
+                  top: Radius.circular(AppRadius.medium),
                 ),
-                cells: [
-                  DataCell(
-                    Row(
-                      children: [
-                        CircleAvatar(
-                          radius: 16,
-                          backgroundColor: AppColors.primary.withOpacity(0.1),
-                          child: Text(
-                            employee.name.substring(0, 1),
-                            style: const TextStyle(fontSize: 12),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              employee.name,
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            Text(
-                              employee.phone,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textMedium,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+              ),
+              child: const Row(
+                children: [
+                  Expanded(
+                    flex: 3,
+                    child: Text(
+                      "Employee",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textHigh,
+                      ),
                     ),
                   ),
-                  DataCell(Text(employee.aadharNumber)),
-                  DataCell(
-                    Text(DateFormat('dd/MM/yyyy').format(employee.dateOfBirth)),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      "Aadhar Number",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textHigh,
+                      ),
+                    ),
                   ),
-                  DataCell(_SalaryTypeBadge(type: employee.salaryType)),
-                  DataCell(
-                    Row(
-                      children: [
-                        if (_showArchived)
-                          IconButton(
-                            icon: const Icon(
-                              Icons.unarchive_outlined,
-                              size: 18,
-                              color: Colors.blue,
-                            ),
-                            onPressed: () => _unarchiveEmployee(employee),
-                          )
-                        else ...[
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 18),
-                            onPressed: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) =>
-                                    AddEditEmployeeScreen(employee: employee),
-                              ),
-                            ),
-                          ),
-                          IconButton(
-                            icon: const Icon(
-                              Icons.archive_outlined,
-                              size: 18,
-                              color: Colors.orange,
-                            ),
-                            onPressed: () => _archiveEmployee(employee),
-                          ),
-                        ],
-                      ],
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      "DOB",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textHigh,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      "Salary Basis",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textHigh,
+                      ),
+                    ),
+                  ),
+                  Expanded(
+                    flex: 2,
+                    child: Text(
+                      "Actions",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        color: AppColors.textHigh,
+                      ),
                     ),
                   ),
                 ],
-              );
-            }).toList(),
-          ),
+              ),
+            ),
+            Expanded(
+              child: ListView.separated(
+                physics: const AlwaysScrollableScrollPhysics(),
+                itemCount: employees.length,
+                separatorBuilder: (context, index) => const Divider(height: 1),
+                itemBuilder: (context, index) {
+                  final employee = employees[index];
+                  return InkWell(
+                    onTap: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            EmployeeDashboardScreen(employee: employee),
+                      ),
+                    ),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 12,
+                      ),
+                      child: Row(
+                        children: [
+                          Expanded(
+                            flex: 3,
+                            child: Row(
+                              children: [
+                                CircleAvatar(
+                                  radius: 16,
+                                  backgroundColor: AppColors.primary.withValues(
+                                    alpha: 0.1,
+                                  ),
+                                  child: Text(
+                                    employee.name.substring(0, 1),
+                                    style: const TextStyle(
+                                      fontSize: 12,
+                                      color: AppColors.primary,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        employee.name,
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                      Text(
+                                        employee.phone,
+                                        style: const TextStyle(
+                                          fontSize: 12,
+                                          color: AppColors.textMedium,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          Expanded(flex: 2, child: Text(employee.aadharNumber)),
+                          Expanded(
+                            flex: 2,
+                            child: Text(
+                              DateFormat(
+                                'dd/MM/yyyy',
+                              ).format(employee.dateOfBirth),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: _SalaryTypeBadge(
+                                type: employee.salaryType,
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            flex: 2,
+                            child: Row(
+                              children: [
+                                if (_showArchived)
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.unarchive_outlined,
+                                      size: 18,
+                                      color: Colors.blue,
+                                    ),
+                                    onPressed: () =>
+                                        _unarchiveEmployee(employee),
+                                  )
+                                else ...[
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.edit_outlined,
+                                      size: 18,
+                                    ),
+                                    onPressed: () => Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (_) => AddEditEmployeeScreen(
+                                          employee: employee,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: const Icon(
+                                      Icons.archive_outlined,
+                                      size: 18,
+                                      color: Colors.orange,
+                                    ),
+                                    onPressed: () => _archiveEmployee(employee),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ],
         ),
       ),
     );

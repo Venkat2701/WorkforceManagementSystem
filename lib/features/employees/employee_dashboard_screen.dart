@@ -19,10 +19,13 @@ final employeeAttendanceProvider = FutureProvider.autoDispose
     });
 
 final employeePaymentProvider = FutureProvider.autoDispose
-    .family<List<WeeklySalary>, String>((ref, employeeId) {
+    .family<List<WeeklySalary>, String>((ref, args) {
+      final parts = args.split('|');
+      final employeeId = parts[0];
+      final groupBy = parts.length > 1 ? parts[1] : 'week';
       return ref
           .read(salaryServiceProvider)
-          .getEmployeePaymentHistory(employeeId);
+          .getEmployeePaymentHistory(employeeId, groupBy: groupBy);
     });
 
 class EmployeeDashboardScreen extends ConsumerStatefulWidget {
@@ -39,6 +42,7 @@ class _EmployeeDashboardScreenState
     extends ConsumerState<EmployeeDashboardScreen> {
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
+  String _paymentFilter = 'week';
 
   @override
   Widget build(BuildContext context) {
@@ -69,7 +73,9 @@ class _EmployeeDashboardScreenState
       body: RefreshIndicator(
         onRefresh: () async {
           ref.invalidate(employeeAttendanceProvider(widget.employee.id));
-          ref.invalidate(employeePaymentProvider(widget.employee.id));
+          ref.invalidate(
+            employeePaymentProvider('${widget.employee.id}|$_paymentFilter'),
+          );
         },
         child: SingleChildScrollView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -107,102 +113,93 @@ class _EmployeeDashboardScreenState
 
   Widget _buildDetailsCard() {
     return CustomCard(
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 40,
-            backgroundColor: AppColors.primary.withOpacity(0.1),
-            child: Text(
-              widget.employee.name.substring(0, 1).toUpperCase(),
-              style: const TextStyle(
-                fontSize: 32,
-                fontWeight: FontWeight.bold,
-                color: AppColors.primary,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                radius: 40,
+                backgroundColor: AppColors.primary.withOpacity(0.1),
+                child: Text(
+                  widget.employee.name.substring(0, 1).toUpperCase(),
+                  style: const TextStyle(
+                    fontSize: 32,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.primary,
+                  ),
+                ),
               ),
+              _buildStatusBadge(widget.employee.status),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.m),
+          Text(
+            widget.employee.name,
+            style: const TextStyle(
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+              color: AppColors.textHigh,
             ),
           ),
-          const SizedBox(width: AppSpacing.l),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      child: Text(
-                        widget.employee.name,
-                        style: const TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.textHigh,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: AppSpacing.s),
-                    _buildStatusBadge(widget.employee.status),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.s),
-                Wrap(
-                  spacing: AppSpacing.m,
-                  runSpacing: AppSpacing.xs,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.phone_outlined,
-                          size: 16,
-                          color: AppColors.textMedium,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          widget.employee.phone,
-                          style: const TextStyle(color: AppColors.textMedium),
-                        ),
-                      ],
-                    ),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.badge_outlined,
-                          size: 16,
-                          color: AppColors.textMedium,
-                        ),
-                        const SizedBox(width: AppSpacing.xs),
-                        Text(
-                          'Aadhar: ${widget.employee.aadharNumber}',
-                          style: const TextStyle(color: AppColors.textMedium),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.m),
-                const Divider(),
-                const SizedBox(height: AppSpacing.m),
-                Wrap(
-                  spacing: AppSpacing.xl,
-                  runSpacing: AppSpacing.m,
-                  children: [
-                    _buildInfoColumn('Salary Type', widget.employee.salaryType),
-                    _buildInfoColumn(
-                      'Base Rate',
-                      '₹${widget.employee.hourlyRate.toStringAsFixed(2)}/hr',
-                      isPrimary: true,
-                    ),
-                    _buildInfoColumn(
-                      'OT Rate',
-                      '₹${widget.employee.overtimeRate.toStringAsFixed(2)}/hr',
-                    ),
-                  ],
-                ),
-              ],
-            ),
+          const SizedBox(height: AppSpacing.s),
+          Wrap(
+            spacing: AppSpacing.m,
+            runSpacing: AppSpacing.xs,
+            crossAxisAlignment: WrapCrossAlignment.center,
+            children: [
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.phone_outlined,
+                    size: 16,
+                    color: AppColors.textMedium,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    widget.employee.phone,
+                    style: const TextStyle(color: AppColors.textMedium),
+                  ),
+                ],
+              ),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.badge_outlined,
+                    size: 16,
+                    color: AppColors.textMedium,
+                  ),
+                  const SizedBox(width: AppSpacing.xs),
+                  Text(
+                    'Aadhar: ${widget.employee.aadharNumber}',
+                    style: const TextStyle(color: AppColors.textMedium),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.m),
+          const Divider(),
+          const SizedBox(height: AppSpacing.m),
+          Wrap(
+            spacing: AppSpacing.xl,
+            runSpacing: AppSpacing.m,
+            children: [
+              _buildInfoColumn('Salary Type', widget.employee.salaryType),
+              _buildInfoColumn(
+                'Base Rate',
+                '₹${widget.employee.hourlyRate.toStringAsFixed(2)}/hr',
+                isPrimary: true,
+              ),
+              _buildInfoColumn(
+                'OT Rate',
+                '₹${widget.employee.overtimeRate.toStringAsFixed(2)}/hr',
+              ),
+            ],
           ),
         ],
       ),
@@ -460,20 +457,63 @@ class _EmployeeDashboardScreenState
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Padding(
-            padding: EdgeInsets.all(AppSpacing.l),
-            child: Text(
-              'Payment History',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.textHigh,
-              ),
+          Padding(
+            padding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.l,
+              vertical: AppSpacing.m,
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Payment History',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textHigh,
+                  ),
+                ),
+                Container(
+                  height: 32,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: AppColors.backgroundAlt,
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      value: _paymentFilter,
+                      icon: const Icon(Icons.arrow_drop_down, size: 20),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: AppColors.textHigh,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      onChanged: (String? newValue) {
+                        if (newValue != null) {
+                          setState(() {
+                            _paymentFilter = newValue;
+                          });
+                        }
+                      },
+                      items: const [
+                        DropdownMenuItem(value: 'day', child: Text('Day')),
+                        DropdownMenuItem(value: 'week', child: Text('Week')),
+                        DropdownMenuItem(value: 'month', child: Text('Month')),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
           ),
           const Divider(height: 1),
           ref
-              .watch(employeePaymentProvider(widget.employee.id))
+              .watch(
+                employeePaymentProvider(
+                  '${widget.employee.id}|$_paymentFilter',
+                ),
+              )
               .when(
                 data: (payments) {
                   if (payments.isEmpty) {
@@ -564,7 +604,11 @@ class _EmployeeDashboardScreenState
         ),
       ),
       title: Text(
-        'Week: ${DateFormat('MMM dd').format(salary.startDate)} - ${DateFormat('MMM dd').format(salary.endDate)}',
+        _paymentFilter == 'day'
+            ? DateFormat('MMM dd, yyyy').format(salary.startDate)
+            : _paymentFilter == 'month'
+            ? DateFormat('MMMM yyyy').format(salary.startDate)
+            : 'Week: ${DateFormat('MMM dd').format(salary.startDate)} - ${DateFormat('MMM dd').format(salary.endDate)}',
         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
       ),
       subtitle: Text(

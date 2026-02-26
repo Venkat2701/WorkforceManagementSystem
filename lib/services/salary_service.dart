@@ -244,8 +244,9 @@ class SalaryService {
   }
 
   Future<List<WeeklySalary>> getEmployeePaymentHistory(
-    String employeeId,
-  ) async {
+    String employeeId, {
+    String groupBy = 'week',
+  }) async {
     // 1. Get employee data
     final employeeDoc = await _firestore
         .collection('employees')
@@ -264,23 +265,37 @@ class SalaryService {
         .map((doc) => Attendance.fromMap(doc.data(), doc.id))
         .toList();
 
-    // 3. Group by calendar week (Monday as start)
-    Map<DateTime, List<Attendance>> weeklyGroups = {};
+    // 3. Group records
+    Map<DateTime, List<Attendance>> groupedRecords = {};
     for (var record in attendanceRecords) {
       if (!record.isPresent) continue; // Only aggregate present days
 
       final date = record.date;
-      final startOfWeek = DateTime(
-        date.year,
-        date.month,
-        date.day,
-      ).subtract(Duration(days: date.weekday - 1));
-      weeklyGroups.putIfAbsent(startOfWeek, () => []).add(record);
+      DateTime groupKey;
+
+      switch (groupBy) {
+        case 'day':
+          groupKey = DateTime(date.year, date.month, date.day);
+          break;
+        case 'month':
+          groupKey = DateTime(date.year, date.month, 1);
+          break;
+        case 'week':
+        default:
+          groupKey = DateTime(
+            date.year,
+            date.month,
+            date.day,
+          ).subtract(Duration(days: date.weekday - 1));
+          break;
+      }
+
+      groupedRecords.putIfAbsent(groupKey, () => []).add(record);
     }
 
     List<WeeklySalary> result = [];
 
-    weeklyGroups.forEach((startOfWeek, records) {
+    groupedRecords.forEach((groupKey, records) {
       double paidHours = 0,
           paidOvertime = 0,
           paidBasePay = 0,
@@ -311,17 +326,39 @@ class SalaryService {
         }
       }
 
-      final endOfWeek = startOfWeek.add(const Duration(days: 6));
-      final weekId = "${startOfWeek.year}_W${(startOfWeek.day / 7).ceil()}";
+      DateTime startPeriod = groupKey;
+      DateTime endPeriod;
+      String groupLabelId;
+
+      switch (groupBy) {
+        case 'day':
+          endPeriod = startPeriod;
+          groupLabelId =
+              "${startPeriod.year}_M${startPeriod.month}_D${startPeriod.day}";
+          break;
+        case 'month':
+          endPeriod = DateTime(
+            startPeriod.year,
+            startPeriod.month + 1,
+            0,
+          ); // Last day of month
+          groupLabelId = "${startPeriod.year}_M${startPeriod.month}";
+          break;
+        case 'week':
+        default:
+          endPeriod = startPeriod.add(const Duration(days: 6));
+          groupLabelId = "${startPeriod.year}_W${(startPeriod.day / 7).ceil()}";
+          break;
+      }
 
       if (paidHours > 0) {
         result.add(
           WeeklySalary(
             employeeId: employee.id,
             employeeName: employee.name,
-            weekId: weekId,
-            startDate: startOfWeek,
-            endDate: endOfWeek,
+            weekId: groupLabelId,
+            startDate: startPeriod,
+            endDate: endPeriod,
             totalHours: paidHours,
             totalOvertime: paidOvertime,
             hourlyRate: employee.hourlyRate,
@@ -339,9 +376,9 @@ class SalaryService {
           WeeklySalary(
             employeeId: employee.id,
             employeeName: employee.name,
-            weekId: weekId,
-            startDate: startOfWeek,
-            endDate: endOfWeek,
+            weekId: groupLabelId,
+            startDate: startPeriod,
+            endDate: endPeriod,
             totalHours: unpaidHours,
             totalOvertime: unpaidOvertime,
             hourlyRate: employee.hourlyRate,
