@@ -128,58 +128,73 @@ class _EmployeeDashboardScreenState
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      widget.employee.name,
-                      style: const TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textHigh,
+                    Expanded(
+                      child: Text(
+                        widget.employee.name,
+                        style: const TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.textHigh,
+                        ),
                       ),
                     ),
+                    const SizedBox(width: AppSpacing.s),
                     _buildStatusBadge(widget.employee.status),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.s),
-                Row(
+                Wrap(
+                  spacing: AppSpacing.m,
+                  runSpacing: AppSpacing.xs,
+                  crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
-                    const Icon(
-                      Icons.phone_outlined,
-                      size: 16,
-                      color: AppColors.textMedium,
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.phone_outlined,
+                          size: 16,
+                          color: AppColors.textMedium,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          widget.employee.phone,
+                          style: const TextStyle(color: AppColors.textMedium),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      widget.employee.phone,
-                      style: const TextStyle(color: AppColors.textMedium),
-                    ),
-                    const SizedBox(width: AppSpacing.m),
-                    const Icon(
-                      Icons.badge_outlined,
-                      size: 16,
-                      color: AppColors.textMedium,
-                    ),
-                    const SizedBox(width: AppSpacing.xs),
-                    Text(
-                      'Aadhar: ${widget.employee.aadharNumber}',
-                      style: const TextStyle(color: AppColors.textMedium),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.badge_outlined,
+                          size: 16,
+                          color: AppColors.textMedium,
+                        ),
+                        const SizedBox(width: AppSpacing.xs),
+                        Text(
+                          'Aadhar: ${widget.employee.aadharNumber}',
+                          style: const TextStyle(color: AppColors.textMedium),
+                        ),
+                      ],
                     ),
                   ],
                 ),
                 const SizedBox(height: AppSpacing.m),
                 const Divider(),
                 const SizedBox(height: AppSpacing.m),
-                Row(
+                Wrap(
+                  spacing: AppSpacing.xl,
+                  runSpacing: AppSpacing.m,
                   children: [
                     _buildInfoColumn('Salary Type', widget.employee.salaryType),
-                    const SizedBox(width: AppSpacing.xl),
                     _buildInfoColumn(
                       'Base Rate',
                       '₹${widget.employee.hourlyRate.toStringAsFixed(2)}/hr',
                       isPrimary: true,
                     ),
-                    const SizedBox(width: AppSpacing.xl),
                     _buildInfoColumn(
                       'OT Rate',
                       '₹${widget.employee.overtimeRate.toStringAsFixed(2)}/hr',
