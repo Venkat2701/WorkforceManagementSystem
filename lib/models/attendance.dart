@@ -49,6 +49,8 @@ class Attendance {
   final double? hourlyRate;
   final double? overtimeRate;
 
+  final String? shiftName;
+
   Attendance({
     required this.id,
     required this.employeeId,
@@ -61,6 +63,7 @@ class Attendance {
     this.segments = const [],
     this.hourlyRate,
     this.overtimeRate,
+    this.shiftName,
   });
 
   factory Attendance.fromMap(Map<String, dynamic> map, String id) {
@@ -81,6 +84,7 @@ class Attendance {
       segments: segmentList,
       hourlyRate: (map['hourlyRate'] as num?)?.toDouble(),
       overtimeRate: (map['overtimeRate'] as num?)?.toDouble(),
+      shiftName: map['shiftName'],
     );
   }
 
@@ -96,6 +100,7 @@ class Attendance {
       'segments': segments.map((s) => s.toMap()).toList(),
       'hourlyRate': hourlyRate,
       'overtimeRate': overtimeRate,
+      'shiftName': shiftName,
     };
   }
 
@@ -111,6 +116,7 @@ class Attendance {
     List<TimeSegment>? segments,
     double? hourlyRate,
     double? overtimeRate,
+    Object? shiftName = _sentinel,
   }) {
     return Attendance(
       id: id ?? this.id,
@@ -124,6 +130,11 @@ class Attendance {
       segments: segments ?? this.segments,
       hourlyRate: hourlyRate ?? this.hourlyRate,
       overtimeRate: overtimeRate ?? this.overtimeRate,
+      shiftName: shiftName == _sentinel
+          ? this.shiftName
+          : (shiftName as String?),
     );
   }
+
+  static const _sentinel = Object();
 }

@@ -43,7 +43,30 @@ class EmployeeService {
   }
 
   Future<void> deleteEmployee(String id) async {
-    await _firestore.collection('employees').doc(id).delete();
+    final batch = _firestore.batch();
+
+    // 1. Delete employee document
+    batch.delete(_firestore.collection('employees').doc(id));
+
+    // 2. Delete attendance records
+    final attendanceSnapshot = await _firestore
+        .collection('attendance')
+        .where('employeeId', isEqualTo: id)
+        .get();
+    for (var doc in attendanceSnapshot.docs) {
+      batch.delete(doc.reference);
+    }
+
+    // 3. Delete salary records (if any in weekly_salaries)
+    final salarySnapshot = await _firestore
+        .collection('weekly_salaries')
+        .where('employeeId', isEqualTo: id)
+        .get();
+    for (var doc in salarySnapshot.docs) {
+      batch.delete(doc.reference);
+    }
+
+    await batch.commit();
   }
 
   Future<bool> isNameDuplicate(String name, {String? excludeId}) async {

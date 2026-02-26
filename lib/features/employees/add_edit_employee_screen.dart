@@ -235,6 +235,63 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
     }
   }
 
+  Future<void> _confirmDelete() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Employee?'),
+        content: const Text(
+          'Deleting a employee will delete all his data like attendance history, payroll data and more data regarding this employee. This action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              foregroundColor: Colors.white,
+            ),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      setState(() => _isLoading = true);
+      try {
+        await ref
+            .read(employeeServiceProvider)
+            .deleteEmployee(widget.employee!.id);
+        if (mounted) {
+          final messenger = ScaffoldMessenger.of(context);
+          final nav = Navigator.of(context);
+
+          nav.pop(); // Exit Edit screen
+          nav.pop(); // Exit Dashboard screen
+
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Employee deleted successfully')),
+          );
+        }
+      } catch (e) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('Error deleting employee: $e'),
+              backgroundColor: AppColors.error,
+            ),
+          );
+        }
+      } finally {
+        if (mounted) setState(() => _isLoading = false);
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -250,6 +307,18 @@ class _AddEditEmployeeScreenState extends ConsumerState<AddEditEmployeeScreen> {
         backgroundColor: Colors.white,
         surfaceTintColor: Colors.white,
         centerTitle: true,
+        actions: widget.employee != null && !widget.isReadOnly
+            ? [
+                IconButton(
+                  icon: const Icon(
+                    Icons.delete_outline,
+                    color: AppColors.error,
+                  ),
+                  onPressed: _isLoading ? null : _confirmDelete,
+                  tooltip: 'Delete Employee',
+                ),
+              ]
+            : null,
       ),
       body: Center(
         child: ConstrainedBox(
