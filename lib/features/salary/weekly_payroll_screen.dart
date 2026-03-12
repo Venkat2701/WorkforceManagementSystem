@@ -161,7 +161,7 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              '${DateFormat('MMM dd').format(_dateRange.start)} - ${DateFormat('MMM dd, yyyy').format(_dateRange.end)}',
+                              '${DateFormat('MMM dd, yyyy').format(_dateRange.start)} - ${DateFormat('MMM dd, yyyy').format(_dateRange.end)}',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                               ),

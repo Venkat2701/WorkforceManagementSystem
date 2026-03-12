@@ -19,11 +19,18 @@ class DraggableDateRangePicker extends StatefulWidget {
       _DraggableDateRangePickerState();
 }
 
+enum PickerMode { calendar, manual, yearPicker }
+
 class _DraggableDateRangePickerState extends State<DraggableDateRangePicker> {
   late DateTime _displayedMonth;
   DateTime? _rangeStart;
   DateTime? _rangeEnd;
   bool _isDragging = false;
+  PickerMode _mode = PickerMode.calendar;
+
+  // Controllers for manual input
+  late TextEditingController _startController;
+  late TextEditingController _endController;
 
   @override
   void initState() {
@@ -35,6 +42,20 @@ class _DraggableDateRangePickerState extends State<DraggableDateRangePicker> {
     );
     _rangeStart = widget.initialDateRange.start;
     _rangeEnd = widget.initialDateRange.end;
+
+    _startController = TextEditingController(
+      text: DateFormat('dd/MM/yyyy').format(_rangeStart!),
+    );
+    _endController = TextEditingController(
+      text: DateFormat('dd/MM/yyyy').format(_rangeEnd!),
+    );
+  }
+
+  @override
+  void dispose() {
+    _startController.dispose();
+    _endController.dispose();
+    super.dispose();
   }
 
   void _onDaySelected(DateTime day) {
@@ -48,7 +69,37 @@ class _DraggableDateRangePickerState extends State<DraggableDateRangePicker> {
       } else {
         _rangeEnd = day;
       }
+      _updateControllers();
     });
+  }
+
+  void _updateControllers() {
+    if (_rangeStart != null) {
+      _startController.text = DateFormat('dd/MM/yyyy').format(_rangeStart!);
+    }
+    if (_rangeEnd != null) {
+      _endController.text = DateFormat('dd/MM/yyyy').format(_rangeEnd!);
+    }
+  }
+
+  void _handleManualInput() {
+    try {
+      final start = DateFormat('dd/MM/yyyy').parseStrict(_startController.text);
+      final end = DateFormat('dd/MM/yyyy').parseStrict(_endController.text);
+
+      if (start.isAfter(widget.lastDate) || start.isBefore(widget.firstDate))
+        return;
+      if (end.isAfter(widget.lastDate) || end.isBefore(widget.firstDate))
+        return;
+
+      setState(() {
+        _rangeStart = start;
+        _rangeEnd = end;
+        _displayedMonth = DateTime(start.year, start.month, 1);
+      });
+    } catch (e) {
+      // Invalid date format
+    }
   }
 
   void _handleGesture(Offset localPosition, BoxConstraints constraints) {
@@ -80,7 +131,6 @@ class _DraggableDateRangePickerState extends State<DraggableDateRangePicker> {
           _displayedMonth.month,
           dayNumber,
         );
-
         if (day.isBefore(widget.firstDate) || day.isAfter(widget.lastDate))
           return;
 
@@ -92,6 +142,7 @@ class _DraggableDateRangePickerState extends State<DraggableDateRangePicker> {
           } else {
             _rangeEnd = day;
           }
+          _updateControllers();
         });
       }
     }
@@ -100,19 +151,15 @@ class _DraggableDateRangePickerState extends State<DraggableDateRangePicker> {
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: const Text('Select Date Range'),
+      titlePadding: EdgeInsets.zero,
+      title: _buildTitle(context),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
       content: SizedBox(
         width: 350,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildCalendarHeader(),
-            const SizedBox(height: 16),
-            _buildWeekdaysRow(),
-            _buildCalendarGrid(),
-          ],
+        child: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 300),
+          child: _buildBody(),
         ),
       ),
       actions: [
@@ -153,6 +200,152 @@ class _DraggableDateRangePickerState extends State<DraggableDateRangePicker> {
     );
   }
 
+  Widget _buildTitle(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: AppColors.primary.withOpacity(0.05),
+        borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text(
+            'Select Date Range',
+            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+          ),
+          IconButton(
+            icon: Icon(
+              _mode == PickerMode.manual
+                  ? Icons.calendar_month
+                  : Icons.edit_calendar,
+              color: AppColors.primary,
+            ),
+            onPressed: () {
+              setState(() {
+                if (_mode == PickerMode.manual) {
+                  _mode = PickerMode.calendar;
+                } else {
+                  _mode = PickerMode.manual;
+                }
+              });
+            },
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody() {
+    switch (_mode) {
+      case PickerMode.manual:
+        return _buildManualInput();
+      case PickerMode.yearPicker:
+        return _buildYearPicker();
+      case PickerMode.calendar:
+        return Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildCalendarHeader(),
+            const SizedBox(height: 16),
+            _buildWeekdaysRow(),
+            _buildCalendarGrid(),
+          ],
+        );
+    }
+  }
+
+  Widget _buildManualInput() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 20),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _startController,
+                  decoration: InputDecoration(
+                    labelText: 'Start Date',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(Icons.calendar_today, size: 18),
+                  ),
+                  keyboardType: TextInputType.datetime,
+                  onChanged: (value) => _handleManualInput(),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: TextField(
+                  controller: _endController,
+                  decoration: InputDecoration(
+                    labelText: 'End Date',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    prefixIcon: const Icon(Icons.event, size: 18),
+                  ),
+                  keyboardType: TextInputType.datetime,
+                  onChanged: (value) => _handleManualInput(),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildYearPicker() {
+    final int startYear = widget.firstDate.year;
+    final int endYear = widget.lastDate.year;
+    final years = List.generate(
+      endYear - startYear + 1,
+      (i) => startYear + i,
+    ).reversed.toList();
+
+    return SizedBox(
+      height: 300,
+      child: GridView.builder(
+        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: 3,
+          childAspectRatio: 2,
+        ),
+        itemCount: years.length,
+        itemBuilder: (context, index) {
+          final year = years[index];
+          final isSelected = year == _displayedMonth.year;
+          return InkWell(
+            onTap: () {
+              setState(() {
+                _displayedMonth = DateTime(year, _displayedMonth.month, 1);
+                _mode = PickerMode.calendar;
+              });
+            },
+            child: Container(
+              alignment: Alignment.center,
+              decoration: BoxDecoration(
+                color: isSelected ? AppColors.primary : Colors.transparent,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Text(
+                '$year',
+                style: TextStyle(
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+                  color: isSelected ? Colors.white : Colors.black87,
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
+
   Widget _buildCalendarHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -161,12 +354,20 @@ class _DraggableDateRangePickerState extends State<DraggableDateRangePicker> {
           icon: const Icon(Icons.chevron_left, color: Colors.grey),
           onPressed: () => _changeMonth(-1),
         ),
-        Text(
-          DateFormat('MMMM yyyy').format(_displayedMonth),
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-            fontSize: 18,
-            color: Colors.black87,
+        InkWell(
+          onTap: () => setState(() => _mode = PickerMode.yearPicker),
+          child: Row(
+            children: [
+              Text(
+                DateFormat('MMMM yyyy').format(_displayedMonth),
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                  fontSize: 18,
+                  color: Colors.black87,
+                ),
+              ),
+              const Icon(Icons.arrow_drop_down, color: AppColors.primary),
+            ],
           ),
         ),
         IconButton(
@@ -244,18 +445,15 @@ class _DraggableDateRangePickerState extends State<DraggableDateRangePicker> {
                 dayNumber,
               );
 
-              // Determine visual state
               final bool startSelected =
                   _rangeStart != null && isSameDay(day, _rangeStart!);
               final bool endSelected =
                   _rangeEnd != null && isSameDay(day, _rangeEnd!);
               final bool inRange = _isDateInRange(day);
 
-              // Premium range highlight logic
               bool isRangeStart = startSelected;
               bool isRangeEnd = endSelected;
 
-              // Normalize if dragging backwards
               if (_rangeStart != null &&
                   _rangeEnd != null &&
                   _rangeStart!.isAfter(_rangeEnd!)) {
@@ -335,7 +533,6 @@ class _CalendarDayCell extends StatelessWidget {
       behavior: HitTestBehavior.opaque,
       child: Stack(
         children: [
-          // Range background highlight
           if (isInRange)
             Align(
               alignment: Alignment.center,
@@ -352,8 +549,6 @@ class _CalendarDayCell extends StatelessWidget {
                 ),
               ),
             ),
-
-          // Selection circle or Today indicator
           Center(
             child: Container(
               width: 36,
