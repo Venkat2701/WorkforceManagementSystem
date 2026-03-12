@@ -7,6 +7,7 @@ import '../../features/employees/employee_list_screen.dart';
 import '../../features/attendance/daily_attendance_screen.dart';
 import '../../features/salary/weekly_payroll_screen.dart';
 import '../../features/shifts/shift_management_screen.dart';
+import '../../features/admin_management/manage_admins_screen.dart';
 import '../../features/auth/login_screen.dart';
 
 import '../../services/auth_service.dart';
@@ -36,11 +37,6 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
 
   void _onNavigation(int index) {
     if (index == widget.selectedIndex) return;
-    
-    if (index == 5) {
-      _handleLogout();
-      return;
-    }
 
     // Use a post-frame callback to avoid navigating during the widget tree's build/layout phase
     // This prevents the "history.isNotEmpty" assertion error on web during rapid navigation.
@@ -66,12 +62,20 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
 
   Widget? _getScreenForIndex(int index) {
     switch (index) {
-      case 0: return const DashboardScreen();
-      case 1: return const EmployeeListScreen();
-      case 2: return const DailyAttendanceScreen();
-      case 3: return const WeeklyPayrollScreen();
-      case 4: return const ShiftManagementScreen();
-      default: return null;
+      case 0:
+        return const DashboardScreen();
+      case 1:
+        return const EmployeeListScreen();
+      case 2:
+        return const DailyAttendanceScreen();
+      case 3:
+        return const WeeklyPayrollScreen();
+      case 4:
+        return const ShiftManagementScreen();
+      case 5:
+        return const ManageAdminsScreen();
+      default:
+        return null;
     }
   }
 
@@ -82,13 +86,16 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
         title: const Text('Logout'),
         content: const Text('Are you sure you want to logout?'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
               // Sign out from Firebase
               await ref.read(authServiceProvider).signOut();
-              
+
               if (mounted) {
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
@@ -96,7 +103,10 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
                 );
               }
             },
-            child: const Text('Logout', style: TextStyle(color: AppColors.error)),
+            child: const Text(
+              'Logout',
+              style: TextStyle(color: AppColors.error),
+            ),
           ),
         ],
       ),
@@ -114,9 +124,9 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
               key: const ValueKey('mobile_appbar'),
               title: Text(
                 widget.title,
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
               ),
               centerTitle: true,
               leading: IconButton(
@@ -129,7 +139,11 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
                   child: CircleAvatar(
                     radius: 18,
                     backgroundColor: AppColors.primary.withOpacity(0.1),
-                    child: const Icon(Icons.person, color: AppColors.primary, size: 20),
+                    child: const Icon(
+                      Icons.person,
+                      color: AppColors.primary,
+                      size: 20,
+                    ),
                   ),
                 ),
               ],
@@ -138,18 +152,14 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
       drawer: isMobile ? _buildNavigationDrawer(context) : null,
       body: Row(
         children: [
-          if (!isMobile)
-            _buildNavigationRail(context),
+          if (!isMobile) _buildNavigationRail(context),
           Expanded(
             child: Container(
               color: AppColors.backgroundAlt,
               child: Column(
                 children: [
-                   if (!isMobile) 
-                    _buildDesktopHeader(context),
-                  Expanded(
-                    child: widget.body,
-                  ),
+                  if (!isMobile) _buildDesktopHeader(context),
+                  Expanded(child: widget.body),
                 ],
               ),
             ),
@@ -163,15 +173,18 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
 
   Widget _buildDesktopHeader(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.xl, vertical: AppSpacing.m),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.xl,
+        vertical: AppSpacing.m,
+      ),
       color: Colors.white,
       child: Row(
         children: [
           Text(
             widget.title,
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
           ),
           const Spacer(),
           IconButton(
@@ -213,21 +226,59 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
                   Text(
                     'Foundry EMS',
                     style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          color: AppColors.textHigh,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      color: AppColors.textHigh,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ],
               ),
             ),
           ),
-          _buildDrawerItem(0, Icons.dashboard_outlined, Icons.dashboard, 'Dashboard'),
+          _buildDrawerItem(
+            0,
+            Icons.dashboard_outlined,
+            Icons.dashboard,
+            'Dashboard',
+          ),
           _buildDrawerItem(1, Icons.badge_outlined, Icons.badge, 'Employees'),
-          _buildDrawerItem(2, Icons.fact_check_outlined, Icons.fact_check, 'Attendance'),
-          _buildDrawerItem(3, Icons.payments_outlined, Icons.payments, 'Payroll'),
-          _buildDrawerItem(4, Icons.schedule_outlined, Icons.schedule, 'Shifts'),
+          _buildDrawerItem(
+            2,
+            Icons.fact_check_outlined,
+            Icons.fact_check,
+            'Attendance',
+          ),
+          _buildDrawerItem(
+            3,
+            Icons.payments_outlined,
+            Icons.payments,
+            'Payroll',
+          ),
+          _buildDrawerItem(
+            4,
+            Icons.schedule_outlined,
+            Icons.schedule,
+            'Shifts',
+          ),
+          if (ref.watch(userRoleProvider).value == 'superadmin' ||
+              widget.selectedIndex == 5)
+            _buildDrawerItem(
+              5,
+              Icons.admin_panel_settings_outlined,
+              Icons.admin_panel_settings,
+              'Manage Admins',
+            ),
           const Spacer(),
-          _buildDrawerItem(5, Icons.logout, Icons.logout, 'Logout'),
+          ListTile(
+            leading: const Icon(Icons.logout, color: AppColors.textMedium),
+            title: const Text(
+              'Logout',
+              style: TextStyle(color: AppColors.textHigh),
+            ),
+            onTap: _handleLogout,
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: AppSpacing.l,
+            ),
+          ),
           const SizedBox(height: AppSpacing.m),
         ],
       ),
@@ -251,17 +302,19 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
           children: [
             Icon(Icons.logout, color: AppColors.textMedium),
             SizedBox(width: 12),
-            Text(
-              'Logout',
-              style: TextStyle(color: AppColors.textHigh),
-            ),
+            Text('Logout', style: TextStyle(color: AppColors.textHigh)),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDrawerItem(int index, IconData icon, IconData selectedIcon, String label) {
+  Widget _buildDrawerItem(
+    int index,
+    IconData icon,
+    IconData selectedIcon,
+    String label,
+  ) {
     final isSelected = widget.selectedIndex == index;
     return ListTile(
       leading: Icon(
@@ -276,14 +329,10 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
         ),
       ),
       onTap: () {
-        if (index == 5) {
-          _handleLogout();
-        } else {
-          if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
-             Navigator.of(context).pop();
-          }
-          _onNavigation(index);
+        if (_scaffoldKey.currentState?.isDrawerOpen ?? false) {
+          Navigator.of(context).pop();
         }
+        _onNavigation(index);
       },
       selected: isSelected,
       selectedTileColor: AppColors.primary.withOpacity(0.05),
@@ -337,7 +386,7 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
           ],
         ),
       ),
-      destinations: const [
+      destinations: [
         NavigationRailDestination(
           icon: Icon(Icons.dashboard_outlined),
           selectedIcon: Icon(Icons.dashboard),
@@ -363,6 +412,13 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
           selectedIcon: Icon(Icons.schedule),
           label: Text('Shifts'),
         ),
+        if (ref.watch(userRoleProvider).value == 'superadmin' ||
+            widget.selectedIndex == 5)
+          const NavigationRailDestination(
+            icon: Icon(Icons.admin_panel_settings_outlined),
+            selectedIcon: Icon(Icons.admin_panel_settings),
+            label: Text('Manage Admins'),
+          ),
       ],
       trailing: Padding(
         padding: const EdgeInsets.only(bottom: AppSpacing.l),
@@ -370,5 +426,4 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
       ),
     );
   }
-
 }

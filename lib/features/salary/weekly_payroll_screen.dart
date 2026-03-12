@@ -8,6 +8,8 @@ import '../../services/salary_service.dart';
 import '../../models/salary_record.dart';
 import 'salary_slip_view.dart'; // To be implemented
 
+import '../../core/widgets/draggable_date_range_picker.dart';
+
 class WeeklyPayrollScreen extends ConsumerStatefulWidget {
   const WeeklyPayrollScreen({super.key});
 
@@ -129,11 +131,13 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
                     const SizedBox(height: 8),
                     GestureDetector(
                       onTap: () async {
-                        final picked = await showDateRangePicker(
+                        final picked = await showDialog<DateTimeRange>(
                           context: context,
-                          initialDateRange: _dateRange,
-                          firstDate: DateTime(2000),
-                          lastDate: DateTime(2101),
+                          builder: (context) => DraggableDateRangePicker(
+                            initialDateRange: _dateRange,
+                            firstDate: DateTime(2000),
+                            lastDate: DateTime.now(),
+                          ),
                         );
                         if (picked != null) {
                           setState(() => _dateRange = picked);
@@ -333,7 +337,7 @@ class _WeeklyPayrollScreenState extends ConsumerState<WeeklyPayrollScreen> {
                       height: isMobile ? double.infinity : 40,
                       decoration: BoxDecoration(
                         color: _statusFilter == 'All'
-                            ? Colors.grey.withOpacity(0.2)
+                            ? Colors.grey.withValues(alpha: 0.2)
                             : (salary.paid
                                   ? const Color(0xFF66BB6A)
                                   : const Color(0xFFEF5350)),

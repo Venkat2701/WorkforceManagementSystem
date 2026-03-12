@@ -1,5 +1,3 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 class Shift {
   final String id;
   final String name;
@@ -23,10 +21,6 @@ class Shift {
   }
 
   Map<String, dynamic> toMap() {
-    return {
-      'name': name,
-      'startTime': startTime,
-      'endTime': endTime,
-    };
+    return {'name': name, 'startTime': startTime, 'endTime': endTime};
   }
 }

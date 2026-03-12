@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:intl/intl.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/widgets/responsive_shell.dart';
 import '../../core/widgets/custom_card.dart';
@@ -12,6 +13,7 @@ import '../attendance/daily_attendance_screen.dart';
 import '../salary/weekly_payroll_screen.dart';
 import '../shifts/shift_management_screen.dart';
 import '../../services/auth_service.dart';
+import '../../services/employee_service.dart';
 
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
@@ -54,6 +56,8 @@ class _DashboardContent extends ConsumerWidget {
               const _DashboardHeader(),
               const SizedBox(height: AppSpacing.xl),
               _StatsGrid(stats: stats),
+              const SizedBox(height: AppSpacing.xl),
+              const _WorkforceOverviewSection(),
               const SizedBox(height: AppSpacing.xl),
               const _ChartsSection(),
               const SizedBox(height: AppSpacing.xl),
@@ -141,6 +145,7 @@ class _StatsGrid extends StatelessWidget {
                   : 'Stable workforce',
               icon: Icons.groups_rounded,
               color: Colors.blue,
+              onTap: () => _showForceDetails(context, stats),
             ),
             _StatCard(
               title: 'Attendance',
@@ -149,6 +154,7 @@ class _StatsGrid extends StatelessWidget {
               icon: Icons.fact_check_rounded,
               color: Colors.green,
               progress: stats.attendanceToday,
+              onTap: () => _showAttendanceDetails(context, stats),
             ),
             _StatCard(
               title: 'Proj. Payout',
@@ -156,6 +162,7 @@ class _StatsGrid extends StatelessWidget {
               subtitle: 'Current week total',
               icon: Icons.account_balance_wallet_rounded,
               color: AppColors.primary,
+              onTap: () => _showPayoutDetails(context, stats),
             ),
             _StatCard(
               title: 'Active Shifts',
@@ -165,6 +172,7 @@ class _StatsGrid extends StatelessWidget {
                   : 'No shifts defined',
               icon: Icons.pending_actions_rounded,
               color: Colors.purple,
+              onTap: () => _showShiftDetails(context, stats),
             ),
           ],
         );
@@ -220,12 +228,6 @@ class _AttendanceChart extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // Calculate maxY dynamically based on data, but at least 1.0
-    final double maxVal = stats.attendanceTrend.isEmpty
-        ? 1.0
-        : stats.attendanceTrend.reduce((a, b) => a > b ? a : b);
-    final double dynamicMaxY = maxVal > 1.0 ? (maxVal * 1.1) : 1.0;
-
     return CustomCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -244,107 +246,189 @@ class _AttendanceChart extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.xl),
-          SizedBox(
-            height: 220, // Slightly more height for labels
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                // Determine rod width based on available space
-                final rodWidth = (constraints.maxWidth / 14).clamp(8.0, 16.0);
+          SizedBox(height: 220, child: _AttendanceBarChart(stats: stats)),
+        ],
+      ),
+    );
+  }
+}
 
-                return BarChart(
-                  BarChartData(
-                    alignment: BarChartAlignment.spaceAround,
-                    maxY: dynamicMaxY,
-                    barTouchData: BarTouchData(
-                      enabled: true,
-                      touchTooltipData: BarTouchTooltipData(
-                        tooltipHorizontalAlignment:
-                            FLHorizontalAlignment.center,
-                        tooltipMargin: 8,
-                        getTooltipItem: (group, groupIndex, rod, rodIndex) {
-                          return BarTooltipItem(
-                            '${(rod.toY * 100).toInt()}%',
-                            const TextStyle(
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
+class _AttendanceBarChart extends StatefulWidget {
+  final DashboardStats stats;
+  const _AttendanceBarChart({required this.stats});
+
+  @override
+  State<_AttendanceBarChart> createState() => _AttendanceBarChartState();
+}
+
+class _AttendanceBarChartState extends State<_AttendanceBarChart> {
+  String _filter = 'All';
+
+  @override
+  Widget build(BuildContext context) {
+    final double maxVal =
+        [...widget.stats.attendanceTrend, ...widget.stats.overtimeTrend].isEmpty
+        ? 1.0
+        : [
+            ...widget.stats.attendanceTrend,
+            ...widget.stats.overtimeTrend,
+          ].reduce((a, b) => a > b ? a : b);
+    final double dynamicMaxY = maxVal > 1.0 ? (maxVal * 1.1) : 1.0;
+
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildFilterChip('All'),
+              const SizedBox(width: 8),
+              _buildFilterChip('Regular'),
+              const SizedBox(width: 8),
+              _buildFilterChip('Overtime'),
+            ],
+          ),
+        ),
+        Expanded(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final rodWidth = (constraints.maxWidth / 20).clamp(6.0, 12.0);
+
+              return BarChart(
+                BarChartData(
+                  alignment: BarChartAlignment.spaceAround,
+                  maxY: dynamicMaxY,
+                  barTouchData: BarTouchData(
+                    enabled: true,
+                    touchTooltipData: BarTouchTooltipData(
+                      getTooltipColor: (group) =>
+                          const Color(0xFF2C3E50).withOpacity(0.9),
+                      getTooltipItem: (group, groupIndex, rod, rodIndex) {
+                        final isOvertime = rod.color != AppColors.primary;
+                        final label = isOvertime ? 'Overtime' : 'Regular';
+                        return BarTooltipItem(
+                          '$label: ${(rod.toY * 100).toInt()}%',
+                          const TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  titlesData: FlTitlesData(
+                    show: true,
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        reservedSize: 30,
+                        getTitlesWidget: (value, meta) {
+                          const days = [
+                            'Mon',
+                            'Tue',
+                            'Wed',
+                            'Thu',
+                            'Fri',
+                            'Sat',
+                            'Sun',
+                          ];
+                          final index = value.toInt();
+                          if (index < 0 || index >= days.length)
+                            return const SizedBox.shrink();
+                          return SideTitleWidget(
+                            meta: meta,
+                            space: 8,
+                            child: Text(
+                              days[index],
+                              style: const TextStyle(
+                                fontSize: 10,
+                                color: AppColors.textMedium,
+                                fontWeight: FontWeight.w500,
+                              ),
                             ),
                           );
                         },
                       ),
                     ),
-                    titlesData: FlTitlesData(
-                      show: true,
-                      bottomTitles: AxisTitles(
-                        sideTitles: SideTitles(
-                          showTitles: true,
-                          reservedSize: 30,
-                          getTitlesWidget: (value, meta) {
-                            const days = [
-                              'Mon',
-                              'Tue',
-                              'Wed',
-                              'Thu',
-                              'Fri',
-                              'Sat',
-                              'Sun',
-                            ];
-                            final index = value.toInt();
-                            if (index < 0 || index >= days.length)
-                              return const SizedBox.shrink();
-
-                            return SideTitleWidget(
-                              meta: meta,
-                              space: 8,
-                              child: Text(
-                                days[index],
-                                style: const TextStyle(
-                                  fontSize: 10,
-                                  color: AppColors.textMedium,
-                                  fontWeight: FontWeight.w500,
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                      leftTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      topTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
-                      rightTitles: const AxisTitles(
-                        sideTitles: SideTitles(showTitles: false),
-                      ),
+                    leftTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
                     ),
-                    gridData: const FlGridData(show: false),
-                    borderData: FlBorderData(show: false),
-                    barGroups: stats.attendanceTrend.asMap().entries.map((e) {
-                      return BarChartGroupData(
-                        x: e.key,
-                        barRods: [
+                    topTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                    rightTitles: const AxisTitles(
+                      sideTitles: SideTitles(showTitles: false),
+                    ),
+                  ),
+                  gridData: const FlGridData(show: false),
+                  borderData: FlBorderData(show: false),
+                  barGroups: List.generate(7, (i) {
+                    final regVal = widget.stats.attendanceTrend.length > i
+                        ? widget.stats.attendanceTrend[i]
+                        : 0.0;
+                    final otVal = widget.stats.overtimeTrend.length > i
+                        ? widget.stats.overtimeTrend[i]
+                        : 0.0;
+
+                    final showReg = _filter == 'All' || _filter == 'Regular';
+                    final showOt = _filter == 'All' || _filter == 'Overtime';
+
+                    return BarChartGroupData(
+                      x: i,
+                      barRods: [
+                        if (showReg)
                           BarChartRodData(
-                            toY: e.value,
+                            toY: regVal,
                             color: AppColors.primary,
                             width: rodWidth,
-                            borderRadius: const BorderRadius.vertical(
-                              top: Radius.circular(4),
-                            ),
-                            backDrawRodData: BackgroundBarChartRodData(
-                              show: true,
-                              toY: dynamicMaxY,
-                              color: AppColors.backgroundAlt,
-                            ),
+                            borderRadius: BorderRadius.circular(2),
                           ),
-                        ],
-                      );
-                    }).toList(),
-                  ),
-                );
-              },
-            ),
+                        if (showOt)
+                          BarChartRodData(
+                            toY: otVal,
+                            color: const Color(0xFF34495E), // Midnight Blue
+                            width: rodWidth,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                      ],
+                    );
+                  }),
+                ),
+              );
+            },
           ),
-        ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildFilterChip(String label) {
+    final isSelected = _filter == label;
+    return InkWell(
+      onTap: () => setState(() => _filter = label),
+      borderRadius: BorderRadius.circular(20),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.transparent,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected
+                ? AppColors.primary
+                : Colors.grey.withOpacity(0.3),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.bold,
+            color: isSelected ? Colors.white : AppColors.textMedium,
+          ),
+        ),
       ),
     );
   }
@@ -366,35 +450,108 @@ class _PayoutTrendChart extends StatelessWidget {
           ),
           const SizedBox(height: 4),
           const Text(
-            'Payout trends per week',
+            'Daily payout for the last 7 days',
             style: TextStyle(color: AppColors.textMedium, fontSize: 12),
           ),
           const SizedBox(height: AppSpacing.xl),
-          SizedBox(
-            height: 200,
-            child: LineChart(
-              LineChartData(
-                gridData: const FlGridData(show: false),
-                titlesData: const FlTitlesData(show: false),
-                borderData: FlBorderData(show: false),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: stats.payoutTrend
-                        .asMap()
-                        .entries
-                        .map((e) => FlSpot(e.key.toDouble(), e.value))
-                        .toList(),
-                    isCurved: true,
-                    color: Colors.blue,
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: const FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: Colors.blue.withOpacity(0.1),
+          SizedBox(height: 200, child: _PayoutTrendLineChart(stats: stats)),
+        ],
+      ),
+    );
+  }
+}
+
+class _PayoutTrendLineChart extends StatelessWidget {
+  final DashboardStats stats;
+  const _PayoutTrendLineChart({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    return LineChart(
+      LineChartData(
+        gridData: const FlGridData(show: false),
+        titlesData: FlTitlesData(
+          show: true,
+          rightTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          topTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          leftTitles: const AxisTitles(
+            sideTitles: SideTitles(showTitles: false),
+          ),
+          bottomTitles: AxisTitles(
+            sideTitles: SideTitles(
+              showTitles: true,
+              reservedSize: 22,
+              interval: 1,
+              getTitlesWidget: (value, meta) {
+                final now = DateTime.now();
+                final index = value.toInt();
+                if (index < 0 || index >= stats.payoutTrend.length)
+                  return const SizedBox.shrink();
+
+                // Show last 7 days initials
+                final dayDate = now.subtract(
+                  Duration(days: stats.payoutTrend.length - 1 - index),
+                );
+                final dayLabel = DateFormat('E').format(dayDate)[0]; // Mon -> M
+
+                return SideTitleWidget(
+                  meta: meta,
+                  child: Text(
+                    dayLabel,
+                    style: const TextStyle(
+                      color: AppColors.textMedium,
+                      fontSize: 10,
                     ),
                   ),
+                );
+              },
+            ),
+          ),
+        ),
+        lineTouchData: LineTouchData(
+          touchTooltipData: LineTouchTooltipData(
+            getTooltipColor: (spot) => const Color(0xFF2C3E50).withOpacity(0.9),
+            getTooltipItems: (touchedSpots) {
+              return touchedSpots.map((spot) {
+                return LineTooltipItem(
+                  '₹${spot.y.toStringAsFixed(0)}',
+                  const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                  ),
+                );
+              }).toList();
+            },
+          ),
+        ),
+        borderData: FlBorderData(show: false),
+        lineBarsData: [
+          LineChartBarData(
+            spots: stats.payoutTrend
+                .asMap()
+                .entries
+                .map((e) => FlSpot(e.key.toDouble(), e.value))
+                .toList(),
+            isCurved: true,
+            gradient: LinearGradient(
+              colors: [AppColors.primary, AppColors.primary.withOpacity(0.7)],
+            ),
+            barWidth: 4,
+            isStrokeCapRound: true,
+            dotData: const FlDotData(show: false),
+            belowBarData: BarAreaData(
+              show: true,
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.primary.withOpacity(0.2),
+                  AppColors.primary.withOpacity(0.0),
                 ],
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
               ),
             ),
           ),
@@ -533,6 +690,7 @@ class _StatCard extends StatelessWidget {
   final IconData icon;
   final Color color;
   final double? progress;
+  final VoidCallback? onTap;
 
   const _StatCard({
     required this.title,
@@ -541,11 +699,13 @@ class _StatCard extends StatelessWidget {
     required this.icon,
     required this.color,
     this.progress,
+    this.onTap,
   });
 
   @override
   Widget build(BuildContext context) {
     return CustomCard(
+      onTap: onTap,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         mainAxisAlignment: MainAxisAlignment.center,
@@ -561,12 +721,15 @@ class _StatCard extends StatelessWidget {
                 child: Icon(icon, color: color, size: 20),
               ),
               const SizedBox(width: 12),
-              Text(
-                title,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textMedium,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: AppColors.textMedium,
+                    fontWeight: FontWeight.w500,
+                  ),
+                  overflow: TextOverflow.ellipsis,
                 ),
               ),
             ],
@@ -606,6 +769,572 @@ class _StatCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+// Popup Dialog Helpers
+void _showForceDetails(BuildContext context, DashboardStats stats) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Workforce Insights'),
+      content: SizedBox(
+        width: 400,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Recent Joinees (Last 30 Days)',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 12),
+              if (stats.recentEmployees.isEmpty)
+                const Text('No recent joinees found.')
+              else
+                ...stats.recentEmployees
+                    .take(5)
+                    .map(
+                      (emp) => ListTile(
+                        leading: CircleAvatar(child: Text(emp['name'][0])),
+                        title: Text(emp['name']),
+                        subtitle: Text(
+                          'Joined: ${DateFormat('dd MMM yyyy').format((emp['joinedDate'] as Timestamp).toDate())}',
+                        ),
+                        contentPadding: EdgeInsets.zero,
+                      ),
+                    ),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+            _showAllEmployeesPopup(context);
+          },
+          child: const Text('View All Employees'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showAttendanceDetails(BuildContext context, DashboardStats stats) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Attendance Summary'),
+      content: SizedBox(
+        width: 400,
+        child: SingleChildScrollView(
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _InfoRow(label: 'Total Strength', value: '${stats.totalCount}'),
+              _InfoRow(label: 'Present Today', value: '${stats.presentCount}'),
+              _InfoRow(
+                label: 'Absent Today',
+                value: '${stats.totalCount - stats.presentCount}',
+              ),
+              _InfoRow(
+                label: 'Overtime Today',
+                value: '${stats.overtimeCountToday}',
+                color: const Color(0xFF34495E),
+              ),
+              const Divider(height: 32),
+              const Text(
+                'Daily Attendance Trend',
+                style: TextStyle(fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 16),
+              // Use the raw chart widget instead of the full card to avoid layout issues
+              SizedBox(height: 200, child: _AttendanceBarChart(stats: stats)),
+            ],
+          ),
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showPayoutDetails(BuildContext context, DashboardStats stats) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Projected Payout Details'),
+      content: SizedBox(
+        width: 400,
+        height: 500,
+        child: Column(
+          children: [
+            _InfoRow(
+              label: 'Total Weekly Estimate',
+              value: '₹${NumberFormat('#,##,###').format(stats.weeklyPayout)}',
+            ),
+            const Divider(height: 32),
+            Expanded(
+              child: stats.payoutByEmployee.isEmpty
+                  ? const Center(child: Text('No payouts recorded this week.'))
+                  : ListView.separated(
+                      padding: EdgeInsets.zero,
+                      itemCount: stats.payoutByEmployee.length,
+                      separatorBuilder: (context, index) =>
+                          const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final payout = stats.payoutByEmployee[index];
+                        return ListTile(
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            payout['name'],
+                            style: const TextStyle(fontWeight: FontWeight.w500),
+                          ),
+                          trailing: Text(
+                            '₹${NumberFormat('#,##,###').format(payout['amount'])}',
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () {
+            Navigator.pop(context);
+            // Replicate ResponsiveShell navigation logic
+            Navigator.of(context).pushReplacement(
+              PageRouteBuilder(
+                pageBuilder: (context, animation, secondaryAnimation) =>
+                    const WeeklyPayrollScreen(),
+                transitionsBuilder:
+                    (context, animation, secondaryAnimation, child) {
+                      return FadeTransition(opacity: animation, child: child);
+                    },
+                transitionDuration: const Duration(milliseconds: 200),
+              ),
+            );
+          },
+          child: const Text('View All Payouts'),
+        ),
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showShiftDetails(BuildContext context, DashboardStats stats) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Shift Assignments'),
+      content: SizedBox(
+        width: 400,
+        height: 300,
+        child: stats.activeShiftsList.isEmpty
+            ? const Center(child: Text('No shifts defined yet.'))
+            : ListView.separated(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: stats.activeShiftsList.length,
+                separatorBuilder: (context, index) => const Divider(),
+                itemBuilder: (context, index) {
+                  final shift = stats.activeShiftsList[index];
+                  return ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(
+                      Icons.schedule,
+                      color: AppColors.primary,
+                    ),
+                    title: Text(
+                      shift['name'],
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    subtitle: Text(
+                      'Timing: ${shift['startTime']} - ${shift['endTime']}',
+                      style: const TextStyle(color: AppColors.textMedium),
+                    ),
+                  );
+                },
+              ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showAllEmployeesPopup(BuildContext context) {
+  showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('All Employees'),
+      content: SizedBox(
+        width: 400,
+        height: 600,
+        child: Consumer(
+          builder: (context, ref, child) {
+            final employeesAsync = ref.watch(employeesStreamProvider);
+            return employeesAsync.when(
+              data: (employees) => ListView.separated(
+                itemCount: employees.length,
+                separatorBuilder: (context, index) => const Divider(),
+                itemBuilder: (context, index) {
+                  final employee = employees[index];
+                  return ListTile(
+                    leading: CircleAvatar(child: Text(employee.name[0])),
+                    title: Text(employee.name),
+                    subtitle: Text('Status: ${employee.status}'),
+                    trailing: Text('₹${employee.hourlyRate.toInt()}/hr'),
+                    contentPadding: EdgeInsets.zero,
+                  );
+                },
+              ),
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (err, stack) => Center(child: Text('Error: $err')),
+            );
+          },
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Close'),
+        ),
+      ],
+    ),
+  );
+}
+
+class _InfoRow extends StatelessWidget {
+  final String label;
+  final String value;
+  final Color? color;
+
+  const _InfoRow({required this.label, required this.value, this.color});
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(label, style: const TextStyle(color: AppColors.textMedium)),
+          Text(
+            value,
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: color ?? AppColors.textMedium,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _WorkforceOverviewSection extends ConsumerWidget {
+  const _WorkforceOverviewSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final stats = ref.watch(dashboardStatsProvider).value;
+    if (stats == null) return const SizedBox.shrink();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Workforce Analytics',
+          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+        ),
+        const SizedBox(height: AppSpacing.m),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final isWide = constraints.maxWidth > 800;
+            return isWide
+                ? Row(
+                    children: [
+                      Expanded(child: _StatusDistributionCard(stats: stats)),
+                      const SizedBox(width: AppSpacing.m),
+                      Expanded(child: _ShiftOccupancyCard(stats: stats)),
+                    ],
+                  )
+                : Column(
+                    children: [
+                      _StatusDistributionCard(stats: stats),
+                      const SizedBox(height: AppSpacing.m),
+                      _ShiftOccupancyCard(stats: stats),
+                    ],
+                  );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _StatusDistributionCard extends StatelessWidget {
+  final DashboardStats stats;
+  const _StatusDistributionCard({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Workforce Status',
+            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+          ),
+          const SizedBox(height: AppSpacing.l),
+          SizedBox(
+            height: 200,
+            child: Stack(
+              children: [
+                PieChart(
+                  PieChartData(
+                    sectionsSpace: 2,
+                    centerSpaceRadius: 50,
+                    sections: stats.employeesByStatus.entries.map((e) {
+                      return PieChartSectionData(
+                        color: _getStatusColor(e.key),
+                        value: e.value.toDouble(),
+                        title: '${e.value}',
+                        radius: 50,
+                        titleStyle: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.white,
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+                Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Text(
+                        '${stats.totalEmployees}',
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Text(
+                        'Total',
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: AppColors.textMedium,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: AppSpacing.m),
+          Wrap(
+            spacing: 16,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
+            children: stats.employeesByStatus.keys.map((status) {
+              return _LegendItem(color: _getStatusColor(status), label: status);
+            }).toList(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'active':
+        return Colors.green;
+      case 'on leave':
+        return Colors.orange;
+      case 'inactive':
+        return Colors.red;
+      default:
+        return Colors.blue;
+    }
+  }
+}
+
+class _ShiftOccupancyCard extends StatelessWidget {
+  final DashboardStats stats;
+  const _ShiftOccupancyCard({required this.stats});
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Shift Occupancy',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              const Text(
+                'Today',
+                style: TextStyle(color: AppColors.textMedium, fontSize: 12),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          const Text(
+            'Employees: Planned vs Actual',
+            style: TextStyle(color: AppColors.textMedium, fontSize: 12),
+          ),
+          const SizedBox(height: AppSpacing.l),
+          SizedBox(
+            height: 200,
+            child: BarChart(
+              BarChartData(
+                alignment: BarChartAlignment.spaceAround,
+                maxY:
+                    (stats.totalCount > 0
+                        ? stats.totalCount.toDouble()
+                        : 10.0) *
+                    1.2,
+                titlesData: FlTitlesData(
+                  show: true,
+                  bottomTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      getTitlesWidget: (value, meta) {
+                        final index = value.toInt();
+                        if (index < 0 ||
+                            index >= stats.shiftDistribution.length)
+                          return const SizedBox.shrink();
+                        return SideTitleWidget(
+                          meta: meta,
+                          space: 4,
+                          child: Text(
+                            stats.shiftDistribution.keys.elementAt(index),
+                            style: const TextStyle(fontSize: 10),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  leftTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  topTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                  rightTitles: const AxisTitles(
+                    sideTitles: SideTitles(showTitles: false),
+                  ),
+                ),
+                gridData: const FlGridData(show: false),
+                borderData: FlBorderData(show: false),
+                barGroups: stats.shiftDistribution.entries
+                    .toList()
+                    .asMap()
+                    .entries
+                    .map((e) {
+                      final shiftName = e.value.key;
+                      final assigned = e.value.value.toDouble();
+                      final present = (stats.shiftPresence[shiftName] ?? 0)
+                          .toDouble();
+
+                      return BarChartGroupData(
+                        x: e.key,
+                        barRods: [
+                          BarChartRodData(
+                            toY: assigned,
+                            color: const Color(
+                              0xFF34495E,
+                            ), // Midnight Blue (Planned)
+                            width: 10,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(2),
+                            ),
+                          ),
+                          BarChartRodData(
+                            toY: present,
+                            color: AppColors.primary, // Saffron (Actual)
+                            width: 10,
+                            borderRadius: const BorderRadius.vertical(
+                              top: Radius.circular(2),
+                            ),
+                          ),
+                        ],
+                        barsSpace: 4,
+                      );
+                    })
+                    .toList(),
+              ),
+            ),
+          ),
+          const SizedBox(height: AppSpacing.m),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _LegendItem(color: const Color(0xFF34495E), label: 'Planned'),
+              const SizedBox(width: 16),
+              _LegendItem(color: AppColors.primary, label: 'Actual'),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _LegendItem extends StatelessWidget {
+  final Color color;
+  final String label;
+  const _LegendItem({required this.color, required this.label});
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Container(
+          width: 10,
+          height: 10,
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(2),
+          ),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          label,
+          style: const TextStyle(fontSize: 11, color: AppColors.textMedium),
+        ),
+      ],
     );
   }
 }

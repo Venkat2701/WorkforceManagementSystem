@@ -226,7 +226,20 @@ class _DailyAttendanceScreenState extends ConsumerState<DailyAttendanceScreen> {
               error: (err, stack) => Center(child: Text('Error: $err')),
             ),
           ),
-          _buildFooter(),
+          employeesAsync.when(
+            data: (employees) {
+              final filteredCount = employees.where((e) {
+                final matchesSearch =
+                    e.name.toLowerCase().contains(_searchQuery.toLowerCase()) ||
+                    e.aadharNumber.contains(_searchQuery);
+                final isActive = e.status != 'Archived';
+                return matchesSearch && isActive;
+              }).length;
+              return _buildFooter(filteredCount);
+            },
+            loading: () => _buildFooter(0),
+            error: (_, __) => _buildFooter(0),
+          ),
         ],
       ),
     );
@@ -246,7 +259,7 @@ class _DailyAttendanceScreenState extends ConsumerState<DailyAttendanceScreen> {
                   context: context,
                   initialDate: _selectedDate,
                   firstDate: DateTime(2000),
-                  lastDate: DateTime(2101),
+                  lastDate: DateTime.now(),
                 );
                 if (picked != null) {
                   setState(() => _selectedDate = picked);
@@ -557,7 +570,9 @@ class _DailyAttendanceScreenState extends ConsumerState<DailyAttendanceScreen> {
     );
   }
 
-  Widget _buildFooter() {
+  Widget _buildFooter(int totalEmployees) {
+    final isMobile = MediaQuery.of(context).size.width < 600;
+
     return Container(
       padding: const EdgeInsets.all(AppSpacing.l),
       decoration: BoxDecoration(
@@ -573,19 +588,25 @@ class _DailyAttendanceScreenState extends ConsumerState<DailyAttendanceScreen> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Marked: ${_attendanceMap.values.where((a) => a.isPresent).length}',
-                style: const TextStyle(fontWeight: FontWeight.bold),
-              ),
-              Text(
-                'Total Employees: ${_attendanceMap.length}',
-                style: const TextStyle(fontSize: 12, color: Colors.blue),
-              ),
-            ],
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  'Marked: ${_attendanceMap.values.where((a) => a.isPresent).length}',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  isMobile
+                      ? 'Total: $totalEmployees'
+                      : 'Total Employees: $totalEmployees',
+                  style: const TextStyle(fontSize: 12, color: Colors.blue),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: AppSpacing.m),
           ElevatedButton.icon(
             onPressed: _isLoading ? null : _saveAttendance,
             icon: _isLoading
@@ -598,7 +619,7 @@ class _DailyAttendanceScreenState extends ConsumerState<DailyAttendanceScreen> {
                     ),
                   )
                 : const Icon(Icons.cloud_upload_outlined),
-            label: const Text('Save Daily Attendance'),
+            label: Text(isMobile ? 'Save' : 'Save Daily Attendance'),
           ),
         ],
       ),
