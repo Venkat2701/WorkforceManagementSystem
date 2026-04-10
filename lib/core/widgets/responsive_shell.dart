@@ -93,15 +93,17 @@ class _ResponsiveShellState extends ConsumerState<ResponsiveShell> {
           TextButton(
             onPressed: () async {
               Navigator.pop(context);
-              // Sign out from Firebase
-              await ref.read(authServiceProvider).signOut();
 
               if (mounted) {
+                // Navigate away FIRST to clear any active Firestore listeners on the current screen
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(builder: (_) => const LoginScreen()),
                   (route) => false,
                 );
               }
+
+              // Sign out from Firebase AFTER navigation
+              await ref.read(authServiceProvider).signOut();
             },
             child: const Text(
               'Logout',
